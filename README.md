@@ -24,7 +24,7 @@ If we were to take a higher-level look on the issues that arise within current g
 
 ## Terminology
 
-Let us first define the terms and vocabulary that will be used throughout this paper. This section should serve just as an informal rundown, some of the terms mentioned here will be brought up again in the following chapters within a more formal context and definitions. Yet, since the discussion in the Package managers chapter, which leads to the establishment of our formal model (and highlights the reasons for it), requires us to use some of the vocabulary which, though settled within the programming community, may still be unfamiliar, we offer this brief list beforehand.
+Let us first define the terms and vocabulary that will be used throughout this paper. This section should serve just as an informal rundown, some of the terms mentioned here will be brought up again in the following chapter within a more formal context and definitions. Though the vocabulary is largely estabilished within the programming community, and we will try not to deviate from the settled terminology, we still offer this brief list just in case.
 
 Package - may also be called a module or an library, a set of functions or classes that performs a well defined, enclosed task. It does so on it's own unless we're talking about a plugin.
 
@@ -32,13 +32,19 @@ Plugin - a special kind of package that works in synergy with a different one or
 
 Dependency - a term used to describe a package that is required either by our own code or by a different package for it to work properly (or at all), although in most situations and environments the program we're writing is also considered a package or module, making the former and the latter option essentially the same thing.
 
-Dependency tree - describes the dependencies of a certain program or module and the relations between them. Note that circular dependencies (i.e. package A requiring B requiring C which requires A again is an example of a circular dependency of length 3), despite being uncommon, is something that does happen within the context of package managers. This means that the dependency 'tree' may in general take the form of a DAG (directed acyclic graph) - but we'll still use the term dependency tree since it's well established (and sounds better than 'dependency directed acyclic graph').
+Dependency tree - describes the dependencies of a certain program or module and the relations between them. Note that circular dependencies (i.e. package A requiring B requiring C which requires A again is an example of a circular dependency of length 3), despite being uncommon, is something that does happen within the context of package managers. This means that the dependency 'tree' may in general take the form of a general directed graph - but we'll still use the term dependency tree since it's well established (and sounds better than 'directed dependency graph').
 
 Private dependendency - a dependency that is used only by the package that required it and is not shared within the dependency tree.
 
 Public dependency - or a shared dependency, a dependency required by two or more packages within the dependency tree. More specifically, we're talking about the situation where the given packages are sharing the exact same files (or functions or classes), in contrast with using two copies of the same module in certain version - the latter still being considered a situation with two separate private dependencies.
 
 Package manager - in general, describes a program meant to resolve the dependency tree given a certain recipe to do so. The amount of proactivity doing this varies largly between different managers and environments.
+
+## Hardness of shared dependencies problem
+
+### Resolving a dependency tree
+
+### Resolving a single version of a package
 
 ## Package managers
 
@@ -84,7 +90,9 @@ The primary factor that differentiates public and peer dependencies is the notio
 
 The reasoning behind this follows the definition of what it means for dependency when it is marked as public - that one or more of its functions or classes may be accessed from it's parent. Let u first look at the situation with nested public dependencies. Suppose that package A is a public dependency of B which is in turn a public dependency of C. This means that there exists a function (or a class) in B that has access to A's API, and there is also one that is exported to C. Without any additional information, we can not reasonably rule out the possibility of this being the same function (or class) - meaning that A's API is exported further down into C, despite the fact it never explicitly asked for it.
 
-Now, if package C requires another version A directly - lets call it A`, and again, we can't make any assumptions of whether it plans to use the function exported from A through B (if such function exists), but similarly we can't rule out the possibility of B existing solely to augment A's functionality, and C's intent to use it in conjuncton with some other function provided by package A. TODOHERE
+Now, if the package C requires another version of A directly - lets call it A', and again, we can't make any assumptions of whether it plans to use the function exported from A through B (if such function exists), but similarly we can't rule out the possibility of B existing solely to augment A's functionality, and C's intent to use it in conjunction with some other function provided by package A'. Therefore, the only reasonable stance we can take in this situation is to conclude the worst scenario and force both A and A' to agree on a single version.
+
+Similar situation arises not only for subtrees with purely public relations, but also for a single level of private branches (thus the reason public dependecies are exported along this extra step). Let us once more create an example with root package R, this time with two private dependencies B and C. Both of these specify a public dependency A, let us again theorize about their version not agreeing, consequently spawning package A as B's (public) dependency, and package A' as C's dependency. Now again from root's perspective, both B and C exports A's functionality in some way - whether it is a function a class or anything else. Either way, we are facing a situation where the two entities of possibly different versions (of the same package) may interact, which can once again yield unpredictable results. Hence, our best bet is a consent between the versons of A and A'.Expanding the idea for the option where one dependency is exported along a private branch and the other along a public one should be trivial.
 
 While this may sound as an additional layer of intricacy, especially if comparing to different approaches within the field. Yet (despite being fans of the KISS principle), we argue that in this case it is needed and without it, certain problems arise when dealing with nested public dependencies (as is illustrated in the section regarding peer dependencies). Additionaly - still in defense of the proposed complexity - we should keep in mind that with the osstrich based 'ignore the problem' approach being the most widespread one, we are hardly expected to stay on the same level of complexity as a method where such complexity is inherently non-existent. The other side to the coin is that in a way, when our concept is put in contrast with peer dependencies, it actually unifies the 'source of truth' for required dependencies - as in, the flow of contrains is always from the child to the parent.
 
@@ -108,7 +116,7 @@ Each kind of resolvable (or unresolvable) dependency tree modeled using public d
 
 ##### Stricter restrictions on certain classes of problems
 
-Despite all of the aforementioned backwards compatibility, there are certain forms of dependency trees accepted by NPM, whether it is of version 2 or 3, that we want our model to deliberatly fail on. These are closely related to the way the public dependency inheritance is designed, that is - it was shaped to the proposed form to account for this additional strictness. We shall first show the emerging problem on an example. The terminology we are using is in regards to the public dependency model with APIs being exposed to the parent, yet we can model the same example using only peer dependencies (and have done so in TODOimg). We will also be using semantic versioning since it has become the standard with node.js
+Despite all of the aforementioned backwards compatibility, there are certain forms of dependency trees accepted by NPM, whether it is of version 2 or 3, that we want our model to deliberatly fail on. These are closely related to the way the public dependency inheritance is designed, that is - it was shaped to the proposed form to account for this additional strictness. We shall first show the emerging problem on an example. We will model it using the NPM's peer dependency model, and later we will show the same example modeled using public dependencies (TODOimg) and the way they change the resolution status. We will also be using semantic versioning since it has become the standard with node.js
 
 Suppose we have the following situation - TODO example
 
@@ -117,7 +125,6 @@ TODOimg1 img2
 Our model therefore proposes to keep the versions of public dependencies consistent across the whole public branch (and a single private one). This way, when a situation such as in one of the previous examples emerges, we can be sure that every API that was exported and reused again uses the same package version, which was not the case with previous model.
 
 In a way, this is removing some of the programmers freedom in exchange for protection from a weird class of hard to track down bugs resulting from mixing APIs of two different versions of a same package - again, we feel that it isn't too wise to trust the package creators to detect this kind of conflicts, since they indeed may apper extremely rarely. Still, the rarer and more cryptic the bug happens to be, the harder it will be for the unlucky person who happens to run into it to correctly track it down. The important message of this section is, that although the imposed rule may be stricter than might be needed in some cases, it is still the best that can be done without making assumptions about installed packages that can't be programmatically checked. In addition, the proposed design creates a reasonable safeguard for situations with a large amount of nested public or peer dependencies, problems with which can be naturally hard to untangle.
-
 
 ##### Key differences
 
@@ -136,23 +143,33 @@ In a certain aspect, peer dependencies are like public ones that are exported on
 Whilst inherited public dependencies directly resemble peer dependencies in many ways, maybe even more so now in version 3 of NPM, the semantic role between the two is quite different. Each peer dependency essentialy tells us to 'require a certain version of a given dependency to be installed on a parent package' (despite the fact that avoiding any installed version completely only yields an ignorable error) , while the condition set byt an inherited public dependency is a bit softer - 'make sure that if any other dependency for the same package appears on this level, it matches the version set by the public dependency inherited from'.
 Of course, when being compared to NPMv2, the difference is obvious, taking older NPMs automatic installation into account - although one may argue that in our concept all of the public dependencies are installed no matter what, which is true and may be considered a drawback (and once again, is a discussion for the implementation chapter). Yet, the installed public dependencies are hidden in the 'local' scope of the dependency which required it, and are exposed to the outside world (in a way that it can access it) only when they are explicitly required there.
 
-TODO maybe more?
-
 ### Formalization
 
+We shall now prepare the theoretical apparatus we are going to use to formaly prove the correctness of our approach and the one sided equivalence in regards to the peer dependency based model.
+
+Firstly, let us establish the dependency tree as a graph of nodes - which represent a package resolved in a concrete version - and edges, which represent a dependency requirement, whether it is public or private. In this and the following section, we will be adressing these edges (or relations between nodes) as dependencies, as opposed to the term dependency denoting a required package itself up to this point. Without explicitly stating otherwise, the term dependency will now be used exclusively in this way.
+
+For each node, let us define two sets - privateExports and publicExports. These will mark the dependencies exported from the children of the given node along either a public or private dependency. The privateExports set then stays private to the node, while publicExports is the set exported from it by the means of both public and private dependency. The reference to node itself is contained in it's own publicExports set, which is in turn always a subset of publicExports.
+
+The only source of errors comes from conflicting versions in the privateExports set (naturally, since everything else within the node is a subset of it). The only action available to us during the dependency tree resolution is the choice of version for a given package. In our proofs, we will often make the decision non-deterministically, since we have already proven the NP-completeness of this problem in general.
+
+The characteristics we set out to formally prove are as follows. First and foremost it is the correctness of our proposed design - we will prove by induction that with each step the resolvability assumed by our model satisfies the constrains we have set to require from a resolvable dependency tree. Secondly, we are to prove the one sided transformability of peer dependency model into our concept, and show that the other side of this implication fails if and only if we are faced with the kind of dependency tree that was described earlier (with nested, 'cascading' dependencies).
+
+Thus, our set of axiom is:
+
+TODO
+
+With TODO(odovdzovacie) rules being:
+
+TODO
+
 ### Proof of correctness
-
-## Hardness of shared dependencies problem
-
-### Resolving a dependency tree
-
-### Resolving a single version of a package
-
-### Simulated annealing
 
 ## Implementation
 
 ### Node module system
+
+### Simulated annealing
 
 ## Results
 
