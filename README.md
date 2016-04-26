@@ -50,7 +50,41 @@ Package manager - in general, describes a program meant to resolve the dependenc
 
 In this section, we'll go through the list of currently available package managers, for both node.js (or javascript in general) packages and package or module systems in other languages or environments. We'll be particularly interested in a way that they handle shared dependencies. Naturally, those that deal with both private and shared ones and are thus closest to our line of work will also be the ones we take the closest look at. On the other hand, managers which enforce a single package version across the whole dependency tree essentially model the borderline situation of making every dependency public in our own mixed model, that will be presented later in this paper.
 
-### Unix repositories
+### GNU / Linux
+
+By the sheer nature of the way the packages tend to build on one another, the outset of package managers can be tracked within the FOSS (which stands for Free and Open-source Software) community. More specifically dpkg, which is considered to be one of the earliest examples of a package management software, emerged as a part of the Debian project. While it did not feature any form of automatic dependency reolution at the time of it's inception, it is also regarded as the first one with widely known tool for such process, in the form of APT (Advanced Packaging Tool).
+
+In the words of Ian Murdock, one of the creators of the Debian linux distribution, the concept of package management is the biggest advancement that linux has bought to the computer industry. (cit-3). Murdock was also one of the original creators of dpkg, although the package has been rewritten by numerous programmers since then.
+
+Deb / RPM, first tar, second ad-hoc format for this spec. purpose. Fields. Dependes, conflicts, pre-dependends.
+
+...
+
+Aptitude - immidiate / interactive resolution
+
+OPIUM
+Optimal Package Install/Uninstall Manager can be considered more of a science project, or a proof-of-concept of a research paper(cit4). It uses off-the-shelf SAT solvers in conjunction ILP solvers to resolve the dependency tree prior to proceeding with installation. OPIUM guaratees completeness, meaning that if ..TODO It also optimizes TODOblah..  ... meaning they might not be quite suitable for the problem at hand - that is, the heuristics used in these general solvers, whether the ones solving satisfiability or those computing integer linear programming (which is used specifically in the case where uninstalling certain packages was needed to proceed (todo cit?)) are not all that well suited for the hierarchies yielded by package repositories. This was addressed in the next package manager on this list.
+
+ZYpp (libzypp) - 2006, openSUSE (used in YaST), sponsored by Novell, SAT solver
+in the words of OPIUM's creators: 'Opium runs fast enough to be usable' - zypp production use
+
+Note on linux vs node
+TODO rewrite
+Install / Uninstall problem - paraphrasing from OPIUM's paper once more - t. In particular, given
+a set of installed packages, and information about package
+dependencies and conflicts, the three problems are:
+Install Problem : Determine if a new package can be
+installed and, if so, determine how.
+Minimum Install Problem : Determine the optimal
+way to install a new package, where optimality is determined
+by an objective function whose value is to
+be minimized.
+Uninstall Problem : Given a new package to install,
+determine the minimal number of packages (possibly
+none) that must be removed from the system in order
+to make the package installable.
+
+This is different to our situation within the node.js environment. The only time we are essentially solving the uninstall problem is with two conflicting versions of a same package. In a way, we are only upgradrading or degrading a single package. Although this may lead to change of it's dependencies and some packages becoming no longer needed, they (the 'obsolete' ones) in no way interfere with the installation of the new package - even if a public dependency which might disrupt the new installation exists among them, it will no longer be used and therefore has no effect. In fact, we can view the uninstall problem simply as the removal of needless modules. Yet, we can look at the nistall and minimum install problems in basically the same way.
 
 ### TODO moar
 
@@ -94,7 +128,9 @@ Now, if the package C requires another version of A directly - lets call it A', 
 
 Similar situation arises not only for subtrees with purely public relations, but also for a single level of private branches (thus the reason public dependecies are exported along this extra step). Let us once more create an example with root package R, this time with two private dependencies B and C. Both of these specify a public dependency A, let us again theorize about their version not agreeing, consequently spawning package A as B's (public) dependency, and package A' as C's dependency. Now again from root's perspective, both B and C exports A's functionality in some way - whether it is a function a class or anything else. Either way, we are facing a situation where the two entities of possibly different versions (of the same package) may interact, which can once again yield unpredictable results. Hence, our best bet is a consent between the versons of A and A'.Expanding the idea for the option where one dependency is exported along a private branch and the other along a public one should be trivial.
 
-While this may sound as an additional layer of intricacy, especially if comparing to different approaches within the field. Yet (despite being fans of the KISS principle), we argue that in this case it is needed and without it, certain problems arise when dealing with nested public dependencies (as is illustrated in the section regarding peer dependencies). Additionaly - still in defense of the proposed complexity - we should keep in mind that with the osstrich based 'ignore the problem' approach being the most widespread one, we are hardly expected to stay on the same level of complexity as a method where such complexity is inherently non-existent. The other side to the coin is that in a way, when our concept is put in contrast with peer dependencies, it actually unifies the 'source of truth' for required dependencies - as in, the flow of contrains is always from the child to the parent.
+While this may sound as an additional layer of intricacy, especially if comparing to different approaches within the field. Yet (despite being fans of the KISS principle), we argue that in this case it is needed and without it, certain problems arise when dealing with nested public dependencies. Additionaly - still in defense of the proposed complexity - we should keep in mind that with the osstrich based 'ignore the problem' approach being the most widespread one, we are hardly expected to stay on the same level of complexity as a method where such complexity is inherently non-existent. The other side to the coin is that in a way, when our concept is put in contrast with peer dependencies, it actually unifies the 'source of truth' for required dependencies - as in, the flow of contrains is always from the child to the parent.
+
+In a way, this is removing some of the programmers freedom in exchange for protection from a weird class of hard to track down bugs resulting from mixing APIs of two different versions of a same package - again, we feel that it isn't too wise to trust the package creators to detect this kind of conflicts, since they indeed may apper extremely rarely. Still, the rarer and more cryptic the bug happens to be, the harder it will be for the unlucky person who happens to run into it to correctly track it down. The important message of this section is, that although the imposed rule may be stricter than might be needed in some cases, it is still the best that can be done without making assumptions about installed packages that can't be programmatically checked. In addition, the proposed design creates a reasonable safeguard for situations with a large amount of nested public or peer dependencies, problems with which can be naturally hard to untangle. As we had mentioned peer dependencies, it is worthy of note that they actually lock down verions in very similar fashion, whilst making the dependency tree much less legible in case of a deep level of nesting (more on this in the peer dependency comparison segment).
 
 A certain detrement which emerges from this behaviour is nevertheless present, and will be further elaborated upon at the end of the next section, since it is perhaps more closely related to the matter presented there.
 
@@ -112,19 +148,7 @@ The model is deliberatly designed to take the current node.js packages standard 
 
 Before we continue with the comparion, a short note about peer dependency handling and the change that was made to it moving from NPMv2 to NPMv3 - as mentioned in the chapter three, peer dependencies are no longer installed automatically in the newest NPM version, instead they only serve as a source of warnings and errors. Thus, since packages working previously with v2 had no need to specify the dependencies marked as peer for the second time in their parent, many are not compatible with version 3 (which had it's first public release in september 2015, and started to really spread maybe towards the end of that year). At the time of writing, v2 is still in long term support mode, and probably will be for some time, and project that had not migrated over to NPMv3 are still a plenty. The reason for writing this is that our model is compatible with approaches used in both of the major NPM versions - because of the way we intall the functionality at the lower level, akin to the way of NPMv2, and then export inherited public dependencies which serve as a guideline similar to peer dependencies in NPMv3.
 
-Each kind of resolvable (or unresolvable) dependency tree modeled using public dependencies can be modeled via peer dependencies, while preserving it's resolvability. The second implication does not hold for a special subclass of dependency trees, which we are going to elaborate upon in the following section. The formal proof of these theses will be presented further down the chapter.
-
-##### Stricter restrictions on certain classes of problems
-
-Despite all of the aforementioned backwards compatibility, there are certain forms of dependency trees accepted by NPM, whether it is of version 2 or 3, that we want our model to deliberatly fail on. These are closely related to the way the public dependency inheritance is designed, that is - it was shaped to the proposed form to account for this additional strictness. We shall first show the emerging problem on an example. We will model it using the NPM's peer dependency model, and later we will show the same example modeled using public dependencies (TODOimg) and the way they change the resolution status. We will also be using semantic versioning since it has become the standard with node.js
-
-Suppose we have the following situation - TODO example
-
-TODOimg1 img2
-
-Our model therefore proposes to keep the versions of public dependencies consistent across the whole public branch (and a single private one). This way, when a situation such as in one of the previous examples emerges, we can be sure that every API that was exported and reused again uses the same package version, which was not the case with previous model.
-
-In a way, this is removing some of the programmers freedom in exchange for protection from a weird class of hard to track down bugs resulting from mixing APIs of two different versions of a same package - again, we feel that it isn't too wise to trust the package creators to detect this kind of conflicts, since they indeed may apper extremely rarely. Still, the rarer and more cryptic the bug happens to be, the harder it will be for the unlucky person who happens to run into it to correctly track it down. The important message of this section is, that although the imposed rule may be stricter than might be needed in some cases, it is still the best that can be done without making assumptions about installed packages that can't be programmatically checked. In addition, the proposed design creates a reasonable safeguard for situations with a large amount of nested public or peer dependencies, problems with which can be naturally hard to untangle.
+Each kind of resolvable (or unresolvable) dependency tree modeled using public dependencies can be modeled via peer dependencies, while preserving it's resolvability. The same is true for the opposite implication - every hierachy using peer dependencies can be rewritten into public ones without changing the status of it being resolvable. The formal proof of these theses will be presented further down the chapter.
 
 ##### Key differences
 
@@ -136,7 +160,7 @@ As we had already discussed before, what we consider a huge advantage of our pub
 
 2. Public dependencies are exported along other public dependencies
 
-In a certain aspect, peer dependencies are like public ones that are exported only a single step up the dependency tree - in contrast of public dependencies which bubble along any public branch and a single private branch. This means that with public dependencies it is computationaly harder to determine whether a conflict exists within the current hierarchy or not, but in turn, it buys us an additional level of security agains the problems mentioned before.
+In a certain aspect, peer dependencies are like public ones that are exported only a single step up the dependency tree - in contrast of public dependencies which bubble along any public branch and a single private branch. On the other hand, peer dependencies are copied over the dependency tree in case of a deep nesting. This means that with public dependencies it is computationaly harder to determine whether a conflict exists within the current hierarchy or not, but in turn, it buys us a level of clarity in our dependency tree, whereas peer dependencies 'pollute' every level of nesting they unwind onto.
 
 3. Inherited dependencies are not mandatory
 
@@ -173,6 +197,16 @@ TODO
 
 ## Results
 
+TODO - 3 packages - some opensource, wordy, vpm
+
 ## Future work
 
 ## References
+
+1) https://hal.archives-ouvertes.fr/file/index/docid/149566/filename/ase.pdf
+
+2) https://www.debian.org/doc/manuals/aptitude/ch02s03s01.en.html
+
+3) https://www.techdirt.com/articles/20160112/16582733316/ian-murdock-his-own-words-what-made-debian-such-community-project.shtml
+
+4) https://cseweb.ucsd.edu/~lerner/papers/opium.pdf
