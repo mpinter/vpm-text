@@ -56,35 +56,43 @@ By the sheer nature of the way the packages tend to build on one another, the ou
 
 In the words of Ian Murdock, one of the creators of the Debian linux distribution, the concept of package management is the biggest advancement that linux has bought to the computer industry. (cit-3). Murdock was also one of the original creators of dpkg, although the package has been rewritten by numerous programmers since then.
 
-Deb / RPM, first tar, second ad-hoc format for this spec. purpose. Fields. Dependes, conflicts, pre-dependends.
+Packages on Linux systems are usually distributed in one of the two de-facto standard format - either DEB or RPM. While .deb is essentialy a tar archive with additional metadata, .rpm is an ad-hoc binary format designed specifically for this purpose(cit1). The most important fields of metadata specified by both of these formats are (besides the obvious - name of the package and it's version) the dependecies of a given package, conflicts - packages which can't be installed alongside of the one being currently installed, and then also the so called pre-dependencies - packages that need to be installed before the installation of our package beings (as opposed to regular dependencies which can be deployed on the system concurrently with it's installation). For all intents and purposes of this paper, we do not need to go into any further specification of either of them, we will just note that from the following list APT uses the .deb format (probably along with OPIUM, since it's comparion tests are ran against APT, despite this fact not being mentioned in OPIUM's research), while ZYpp, YUM, DNF use the RPM package format.
 
-...
+####APT
 
-Aptitude - immidiate / interactive resolution
+Advanced Packaging Tool is probably the most high-profile package manager, whether it is because of functionality or simply as a result of being the primary package manager of Debian and Debian-based Ubuntu (which is currently the most wide-spread linux distribution). As mentioned before, it works with the .deb package format, though flavours that run with .rpm exist. APT has two modes of operation - the immediate and the interactive mode. The former offers a fast way to solve most dependency problems, while the latter allows for user input to provide feedback to the resolver and thus, guide it towards the correct solution.
 
-OPIUM
-Optimal Package Install/Uninstall Manager can be considered more of a science project, or a proof-of-concept of a research paper(cit4). It uses off-the-shelf SAT solvers in conjunction ILP solvers to resolve the dependency tree prior to proceeding with installation. OPIUM guaratees completeness, meaning that if ..TODO It also optimizes TODOblah..  ... meaning they might not be quite suitable for the problem at hand - that is, the heuristics used in these general solvers, whether the ones solving satisfiability or those computing integer linear programming (which is used specifically in the case where uninstalling certain packages was needed to proceed (todo cit?)) are not all that well suited for the hierarchies yielded by package repositories. This was addressed in the next package manager on this list.
+The immedate mode is essetially a bruteforce algorithm - the manager will list through the depedencies attempt to install each of the packages there - or check if it is already installed, or whether it's already satisfied as a suggestion (suggestions are not installed if another package with the same suggestion in same version is already installed). If such package is not available, or is conflicting within the current setup, it will attempt to intall the highest-priority (an optional field for .deb packages - can be Required, Important, Standard, Optional, Extra, in order of decreasing priority value) package whose candidate version provides the target of the current alternative.(cit-apt) When even this option fails, it looks for alternatives specified within the package dependencies (as a disjunction of packages which may replace each other). If any of the previous step succeeds, the algorithm will be called recursively on the newly installed package's dependencies.
 
-ZYpp (libzypp) - 2006, openSUSE (used in YaST), sponsored by Novell, SAT solver
-in the words of OPIUM's creators: 'Opium runs fast enough to be usable' - zypp production use
+ As it tends to be with most bruteforce algorithms in various programming applications, the immediate mode provides a good baseline but is in no way a complete solution to a wide array of situations which may happen during the resolution algorithm. Therefore APT provides users with the aforementioned interactive mode, where they may manually choose the dependencies they want to install along with their versions. This approach, while no doubt functional, is far from being user friendly.
 
-Note on linux vs node
-TODO rewrite
-Install / Uninstall problem - paraphrasing from OPIUM's paper once more - t. In particular, given
-a set of installed packages, and information about package
-dependencies and conflicts, the three problems are:
-Install Problem : Determine if a new package can be
-installed and, if so, determine how.
-Minimum Install Problem : Determine the optimal
-way to install a new package, where optimality is determined
-by an objective function whose value is to
-be minimized.
-Uninstall Problem : Given a new package to install,
-determine the minimal number of packages (possibly
-none) that must be removed from the system in order
-to make the package installable.
+####OPIUM
 
-This is different to our situation within the node.js environment. The only time we are essentially solving the uninstall problem is with two conflicting versions of a same package. In a way, we are only upgradrading or degrading a single package. Although this may lead to change of it's dependencies and some packages becoming no longer needed, they (the 'obsolete' ones) in no way interfere with the installation of the new package - even if a public dependency which might disrupt the new installation exists among them, it will no longer be used and therefore has no effect. In fact, we can view the uninstall problem simply as the removal of needless modules. Yet, we can look at the nistall and minimum install problems in basically the same way.
+Optimal Package Install/Uninstall Manager can be considered more of a science project, or a proof-of-concept of a research paper(cit4). It uses off-the-shelf SAT solvers in conjunction ILP solvers to resolve the dependency tree prior to proceeding with installation. OPIUM claims to be complete, in the sense that if a solution exists, it is guarateed to find it. In addition, it optimizes the cost of this solution (the number of intalled or uninstalled packages) - this comes as a natural requirement, since otherwise a 'trivial' strategy of uninstalling every package on a system to make sure it does not conflict with the new installation would provide a vald solution. Still, the use of generic SAT solvers, while sufficient, have proven to be maybe the greatest holdback of this project - meaning they might not have been quite suitable for the problem at hand. More precisely, heuristics used in said general solvers, whether the ones solving satisfiability or those computing integer linear programming (which is used specifically in the case where uninstalling certain packages was needed to proceed (todo cit?)) have shown to be not all that appropriate for the hierarchies yielded by package repositories(TODOcit). This was addressed in the next package manager on this list.
+
+####ZYpp
+
+In the words of OPIUM's creators - 'Opium runs fast enough to be usable'(cit4). The natural step forward while maintaining the idea of using SAT solver to resolve the dependency tree prior to the package installation itself, is to use a solver dedicated to the task of solving the package hierarchies. This was realized in ZYpp (or previously libzypp), a Novell sponsored package manager for openSUSE and other SUSE linux distributions, used in many of the core packages that this distribution is known for (like YaST)(cit5). In contrast with OPIUM, while both are built upon the same idea, ZYpp was the one built for production purposes. It is also worth noting that at the moment of writing this paper, the DNF (Dandified YUM), which is the default package manager for Fedora distribution starting from version 22, uses the libsolv solver library from ZYpp.
+
+#### Other
+
+The other, currently fairly large package managers that did not make it on this list (because of reasons usually related to the fact that their resolution algorithm was not interesting to us) are as follows. Yum, which has just been replaced on Fedora and is still the main package manager for CentOS, and is considered by the community to be broken and obsolete, with documentation either missing or being cryptic.(cit-yum). Pacman, the package manager of Arch-linux, using custom binary package format. There is also the briefly mentioned DNF that uses the resolve algorithm of ZYpp.
+
+#### Note on difference between system and programming language packages
+
+Citing from OPIUM's paper once more - the three problems a package manager for linux/gnu packages is trying to solve are:
+
+Install Problem : Determine if a new package can be installed and, if so, determine how.
+
+Minimum Install Problem : Determine the optimal way to install a new package, where optimality is determined by an objective function whose value is to be minimized.
+
+Uninstall Problem : Given a new package to install, determine the minimal number of packages (possibly none) that must be removed from the system in order to make the package installable.(cit-4)
+
+This is different to our situation within the node.js environment. That is, despite the title of this section, the discussed differencies may perhaps be appliable only in the context of javascript modules, since that is our target platform and the point of our interest.
+
+The only time we are essentially solving the uninstall problem is with two conflicting versions of a same package. In a way, we are only upgradrading or degrading a single package. Although this may lead to change of it's dependencies and some packages becoming no longer needed, they (the 'obsolete' ones) in no way interfere with the installation of the new package - even if a public dependency which might disrupt the new installation exists among them, it will no longer be used and therefore has no effect. In fact, we can view the uninstall problem simply as the removal of needless modules. Yet, we can look at the install and minimum install problems in basically the same way.
+
+There is also the notion of pre-dependencies being specified in both the .deb and .rpm formats. As noted in the Debian documentation: Pre-Depends should be used sparingly, preferably only by packages whose premature upgrade or installation would hamper the ability of the system to continue with any upgrade that might be in progress. (cit-predep) This option is not really needed in the context of javascript modules, since their configuration or any kind of interaction between the dependencies happens only at runtime.
 
 ### TODO moar
 
@@ -210,3 +218,13 @@ TODO - 3 packages - some opensource, wordy, vpm
 3) https://www.techdirt.com/articles/20160112/16582733316/ian-murdock-his-own-words-what-made-debian-such-community-project.shtml
 
 4) https://cseweb.ucsd.edu/~lerner/papers/opium.pdf
+
+5) http://doc.opensuse.org/projects/libzypp/HEAD/
+
+yum) http://dnf.baseurl.org/2015/05/11/yum-is-dead-long-live-dnf/
+
+yum2) http://yum.baseurl.org/api/yum/yum/depsolve.html
+
+predep) https://www.debian.org/doc/debian-policy/ch-relationships.html
+
+sem) http://semver.org/
