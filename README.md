@@ -118,7 +118,32 @@ All in all, this means that while humans can use the information provided by it 
 
 #### Bundler
 
+... In a fashion similar to python, ruby does not really support having ..(since there is no module system akin to the one in node.js that would attempt to resolve the package within it's namespace). TODO
+
+As far as the resolve algorithm goes, Bundler have actually changed it's reslolver backend just in march of this year - previously, it used a custom one, presently the Molinillo resolver from CocoaPods (a package manager for Cocoa) has took it's place. Yet, both of said resolvers take essentially a common aproach to to the problem - the one of backtracking the dependencies in case of conflict, with Molinillo having the advantage of performing a lookahead.
+
+That is, at heart, both of the algorithms mark ..TODO.. Note that this means that Bundler, unlike for example NPM, performs a separate precomputation step on required dependencies (and tries to solve the conflicts) before continuing with the install step.
+
+//between a full fledged SAT solver and plain simple osstrich based style of ignoring the problem and leaving it to developer.
+
+//Regarding this algorithm, let us perhaps briefly adress the criticism that tends to be leveled against NPM in comparison with
+
 #### Pip
+
+TODO
+
+It's hard to talk about any kind of dependency resolution within pip - essentially all is left upon the user. Pip has a straightforward way of installing packages which goes as follows(cit-pip):
+
+for top-level requirements:
+
+a. only one spec allowed per project, regardless of conflicts or not. otherwise a "double requirement" exception
+b. they override sub-dependency requirements.
+
+for sub-dependencies
+
+a. "first found, wins" (where the order is breadth first)
+
+This issue has been open at least since Jun of 2013 and does not look to be resolved any time soon. Note that python itself does not support multiple versions TODO
 
 #### NuGet ?
 
@@ -184,7 +209,7 @@ A certain detrement which emerges from this behaviour is nevertheless present, a
 
 In our model, we can say that each dependency, whether it is public or private is self-contained - or in other words - does not assume any information about the outside world. The dependency stores all the neccessary information about packages it needs for it to work either directly in itself, or inherited from one of it's subdependencies - yet, still contained within the subtree of the dependency without polluting the 'global' scope (even if it is only the scope of the parent). You always get the full info required for the current package to install by looking at all of it's children, and you can be sure there is never an additional 'hidden' source of such information.
 
-At first glance, this may seem as a more of a semantic than a functional change - since despite our containment for the current package we nevertheless export the same constrains to the parent as we would have done using peer dependencies. The difference lies in the matter of exporting quite a few more of these because of the way the inheritance works.
+At first glance, this may seem as a more of a semantic than a functional change - since despite our containment for the current package we nevertheless export the same constrains to the parent as we would have done using peer dependencies. (TODO dalsia veta neplati, prerobit! aj inde v pub. dep. casti) The difference lies in the matter of exporting quite a few more of these because of the way the inheritance works.
 
 While we consider the fact that current setup allows us to comfortably reason about the needed dependencies as important enough, there is still a severe drawback associated with this (and in part with the previous) feature, which also has to be recognized when working on a package manager utilizing our dependency model. Although we indeed gain the ability to resolve each subtree on its own, with all possible conflicts modeled in the form of children of our subtrees root, the state of this root itself is now defined not only by the version of a package it represents, but also by its chosen public dependencies and public subdependencies - or more importantly, by the ones we export as inherted from our root. Firstly, this means that we can have (and in fact may often need) multiple copies of the same package in the same version installed, each one resolved using (and exporting) different public dependencies. Secondly, we can no longer choose to use a installed package as a dependency simply based on it's version - which implies that the ied package manager based approach of differentiating packages based on their content (whether we are taking symbolic links into account or not - the problem may arise at a deeper level) is not avaliable to us anymore.
 
@@ -223,17 +248,17 @@ For each node, let us define two sets - privateExports and publicExports. These 
 
 The only source of errors comes from conflicting versions in the privateExports set (naturally, since everything else within the node is a subset of it). The only action available to us during the dependency tree resolution is the choice of version for a given package. In our proofs, we will often make the decision non-deterministically, since we have already proven the NP-completeness of this problem in general.
 
-The characteristics we set out to formally prove are as follows. First and foremost it is the correctness of our proposed design - we will prove by induction that with each step the resolvability assumed by our model satisfies the constrains we have set to require from a resolvable dependency tree. Secondly, we are to prove the one sided transformability of peer dependency model into our concept, TODO-other-side-works-too
+The characteristics we set out to formally prove are as follows. First and foremost it is the correctness of our proposed design - we will prove by induction that with each step the resolvability assumed by our model satisfies the constrains we have set to require from a resolvable dependency tree - that is, after each step we are able to correctly declare whether the tree is conflicting or not by using our proposed model (TODO - are we actually doing this ?). Secondly, we are to prove the equivallence with the peer dependency model
 
-Thus, our set of axiom is:
+#### Peer dependency model
 
-TODO
+We are going to split the formal definition into two subsections, so that it best suites us in our inductive proof later. The first one describes the 'growth' of the dependency tree, while the second one is concerned with the reviewing of peer dependencies and identifying possible conflicts. As a matter of fact, this also mirrors the way that both our package manager and many of the aforementioned others approach the problem - re (with some featuring also a third step, that being dependency resolution).
 
-With TODO(odovdzovacie) rules being:
+#### Proposed model
 
-TODO
+Again, we first define the steps applied during the construction of the hierarchy, and subsequently the ones concerned with checking the correctness of public dependencies within it.
 
-### Proof of correctness
+#### Proof
 
 ## Implementation
 
@@ -309,3 +334,7 @@ sem) http://semver.org/
 modcount) http://www.modulecounts.com/
 
 anneal) http://mkweb.bcgsc.ca/papers/cerny-travelingsalesman.pdf
+
+mol) https://github.com/CocoaPods/Molinillo/blob/master/ARCHITECTURE.md
+
+pip) https://github.com/pypa/pip/issues/988
