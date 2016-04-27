@@ -42,9 +42,13 @@ Package manager - in general, describes a program meant to resolve the dependenc
 
 ## Hardness of shared dependencies problem
 
+Let us first reason about rationale behind the topic of this paper. We will estabilish the fact that the problem of automatic dependency resolution is a hard one to solve (at least when talking about the general case of the dependency tree being in no way constrained). This in turn means, firstly, that providing the programmers with a set of tools which make it easier from him (or for a software tool which he uses) to reason about the dependency hierarchy and the potentional problems which may appear within it is essential. We attempt to help with this issue by providing a design that models shared dependencies in a novel way, that hopefully provides more insight into the way the package APIs are exported from one module to another. Secondly, since it also signifies that no reasonable deterministic way of solving this problem exists, we provide a heuristic approach for finding the solution in a plausible timeframe. But before we get to that, allow us to present the proof of this hardness itself.
+
 ### Resolving a dependency tree
 
-### Resolving a single version of a package
+The NP complexity class covers a set of decision problems for which exists a nondeterminitic algorithm that runs in polynomial time.(cit-complx) Within it resides the NP-complete subclass. If a problem is said to be NP-complete, any other problem which belongs to the NP complexity class is reducible to it in polynomial time. We will show that the decision problem of whether a given set of dependences is installable (without any conflicts) is NP-complete, and thus creating an algorithm that is guaranteed to find a correct answer to this question in general case (and on current harware with a reasonable amount of time) is rather unlikely. The formal proof we present is taken from (cit-todo).
+
+TODO
 
 ## Package managers
 
@@ -52,7 +56,7 @@ In this section, we'll go through the list of currently available package manage
 
 ### Operating System package managers (GNU / Linux)
 
-By the sheer nature of the way the packages tend to build on one another, the outset of package managers can be tracked within the FOSS (which stands for Free and Open-source Software) community. More specifically dpkg, which is considered to be one of the earliest examples of a package management software, emerged as a part of the Debian project. While it did not feature any form of automatic dependency reolution at the time of it's inception, it is also regarded as the first one with widely known tool for such process, in the form of APT (Advanced Packaging Tool).
+By the sheer nature of the way the packages tend to build on one another, the outset of package managers can be tracked within the FOSS (which stands for Free and Open-source Software) community. More specifically dpkg, which is considered to be one of the earliest examples of a package management software, emerged as a part of the Debian project. While it did not feature any form of automatic dependency resolution at the time of it's inception, it is also regarded as the first one with widely known tool for such process, in the form of APT (Advanced Packaging Tool).
 
 In the words of Ian Murdock, one of the creators of the Debian linux distribution, the concept of package management is the biggest advancement that linux has bought to the computer industry. (cit-3). Murdock was also one of the original creators of dpkg, although the package has been rewritten by numerous programmers since then. While system packages are different by their very nature from the libraries for a programming language or environment (such as the target of our endeavor - node.js and javascript), the package managers created to handle them deal with the very same problem we have defined earlier - that is, the dependency graph represents essentially a general satisfiability problem, with the domain of available packages being way too large to explore as a whole. Thus, the same kind of difficulties arises during the dependency resolution. In fact, due to the sheer size of some of the system repositories, and the lengthy period for which some of the packages present in them are maintained (some may very well have 20 or more years already), these problems may be even more severe. Thus, we can maybe observe that even the package managers and their approach towards the dependency tree resolution might be, if we are to say so, more mature.
 
@@ -266,12 +270,11 @@ Again, we first define the steps applied during the construction of the hierarch
 
 ### Simulated annealing
 
-TODO continue here! for presentation purposes
 Simulated annealing, in general, is a Monte Carlo method of for approximating a global optimum of a given function. It is an adaptation of a slightly older Metropolis-Hastings algorithm, essentially using technique from the area of study of thermodynamics to further improve the chances of it converging to the correct result. It has first apperd in a paper from 1983(cit-anneal).
 
 The method is especially usefull for finding a minimum (or a maximum) of a function which is hard to define over the entire domain but can be computed for a single point - or in other words sampled. We will later show how our problem is easily reducible to fit into the described setting. The high-level idea is taken from metallurgy, where the term describes the process of heated metals being allowed to cool down slowly, with their atoms being able to migrate along the crystal lattice. The higher the temperature, the easier it is for an atom to break it's bond and move, thus, as the metal is getting cooler, less and less changes are happening to it's structure. Using this mechanism, the mean value of overall energy of the system is able to spontaneously approach, and subsequently fluctuate around, a state of equillibrium(cit-anneal) - which will get progressively lower as the temperature decreases. Mentioned mean energy will be in a way analogous to our sampled function, with the state of equillibrium essentially represeting a local minimum.
 
-To put it all into the context of computer programming, when we 'simulate' the annealing process, we will create a random walk on a discreet states of the system (similarly to the Monte Carlo Markov Chain walk done in Metropolis-Hastings TODOcheck on this), where the probability of moving to the next state is based on it's 'energy' (the value of the examined function, or in other words the 'fitness' of the state) and the current temperature. The higher the temperature, the greater is also the probability that we allow for transition from a lower energy state to a higher one. This, just like in metallurgy, alows us to escape the local minima we might fall into, but    .... we will start off with higher temeperature -
+To put it all into the context of computer programming, when we 'simulate' the annealing process, we will create a random walk on a discreet states of the system (similarly to the Monte Carlo Markov Chain walk done in Metropolis-Hastings TODOcheck on this), where the probability of moving to the next state is based on it's 'energy' (the value of the examined function, or in other words the 'fitness' of the state) and the current temperature. The states proposed in the transitions are called the 'neighbours' of the current state. The higher the temperature, the greater is also the probability that we allow for transition from a lower energy state to a higher one. This, just like in metallurgy, allows us to escape the local minima we might fall into, but as the temperature descreases over time, makes us fluctuate around a single state - which should represent the global minimum we were searching for.
 
 The general algorithm is thus as follow(cit-wiki?):
 
@@ -287,7 +290,11 @@ Output: the final state s
 
 There is a single, key difference in the application of this method to our problem as compared to the general case. The variable we are to minimize through the process of annealing is the number of conflicts in the dependency tree. For this variable, the global minimum we are trying to reach is know - that is, naturally, a state with zero conflicting dependencies. When this state is reached, we may safely abandon any further computation and claim it as our final solution. On the other hand - we can't be sure if this desired outcome exists in the system - maybe the hierarchy is inherently conflicting, without a way of resolving it.
 
-As we have already defined the way we are approaching the energy of our system, and following from it the definition of our state as a resolved dependency tree (whether conflicting or not), we only need TODO blah
+As we have already defined the way we are approaching the energy of our system, and following from it the definition of our state as a resolved dependency tree (whether conflicting or not), we only need to determine the process of neighbourhood selection to aquire a full road map of our annealing algorithm. We will be refering to the process of mutation more so than the concept of neighbours, since it mirrors the syntax we have used in our code better. By mutation, we will mean the whole process of selecting one of the packages, changing it's version (and automatically rejecting and retrying if the version does not satisfy any of the packages dependent on it) and resolving any of the dependencies that has been newly added to the tree as a result of this change. Though to be consistent with the original definition, we should mention that valid neighbours are always resolved dependency trees, where a single dependency of a single package has changed it's version within it's defined bounds.
+
+The package selected to be mutated has to be either directly one of the packages marked as conflicting or a predecessor of such package. Thanks to the way we have defined our system of shared dependencies, we can limit the search for candidates between the root and the last conflict on a branch - and also ignore the branches where such conflict does not exist - as we know that changes to the subtree beyond the conflicting node would have no effect on the collisions currently present. Making this assumption within the world of peer dependencies would be harder, because the same problem may be copied over the tree numerous times, and it can be uneasy to find the original culprit.
+
+After each mutation, the number of conflicting dependencies is recounted across the whole hierarchy, and the newly proposed state is accepted according to it's energy, current temperature and a factor of randomness. This concludes a single iteration and restarts the procedure with whichever state was chosen in the last step of a previous one , and also with slightly lower temperature.
 
 Rounding it up, our proposed setup for simulated annealing on dependency trees is as follows
 
@@ -295,7 +302,7 @@ State - a fully resolved dependency tree, whether it is still conflicting or not
 
 Energy - the number of packages conflicting in the given state
 
-Mutations (defining neighbours for each state) - changing a single package version, where the package is a either a conflicting one, or a predecessor of one of the conflicting packages. The new version must satisfy the version range of at least one of the packages dependent on the mutated one - otherwise it is immediatle discarded as not being a valid neighbour and a new mutation is generated  (TODO how - keep prev for all other or match where possible ?)
+Mutations (defining neighbours for each state) - changing a single package version, where the package is a either a conflicting one, or a predecessor of one of the conflicting packages. The new version must satisfy the version range of at least one of the packages dependent on the mutated one - if it does, it is set as a new dependency of said package, otherwise it is immediatle discarded as not being a valid neighbour and a new mutation is generated
 
 TODO code
 
@@ -338,3 +345,5 @@ anneal) http://mkweb.bcgsc.ca/papers/cerny-travelingsalesman.pdf
 mol) https://github.com/CocoaPods/Molinillo/blob/master/ARCHITECTURE.md
 
 pip) https://github.com/pypa/pip/issues/988
+
+complx) Alsuwaiyel, M. H.: Algorithms: Design Techniques and Analysis
