@@ -78,7 +78,7 @@ In the words of OPIUM's creators - 'Opium runs fast enough to be usable'(cit4). 
 
 #### Other
 
-The other, currently fairly large package managers that did not make it on this list (because of reasons usually related to the fact that their resolution algorithm was not interesting to us) are as follows. Yum, which has just been replaced on Fedora and is still the main package manager for CentOS, and is considered by the community to be broken and obsolete, with documentation either missing or being cryptic.(cit-yum). Pacman, the package manager of Arch-linux, using custom binary package format. There is also the briefly mentioned DNF that uses the resolve algorithm of ZYpp.
+The other, currently fairly large package managers that did not make it on this list (because of reasons usually related to the fact that their resolution algorithm was not interesting to us) are as follows. Yum, which has just been replaced on Fedora and is still the main package manager for CentOS, and is considered by the community to be broken and obsolete, with documentation either missing or being cryptic.(cit-yum). Pacman, the package manager of Arch-linux, using it's own binary package format. There is also the briefly mentioned DNF that uses the resolve algorithm of ZYpp. And finally Portage, that again uses a SAT solver with custom heuristics (cit-port), which is an approach already talked about in ZYpp's section.
 
 #### Note on difference between system and programming language packages
 
@@ -98,11 +98,47 @@ There is also the notion of pre-dependencies being specified in both the .deb an
 
 ### Programming environment package managers
 
-### TODO more that work with semantic versioning
+"It is a truth universally acknowledged that a programming language must be in want of a package manager."(cit-pkgman) And indeed, we can say that the want is so prevalent that it occasionaly materializes even in the form of multiple package managers for a single language. Critics of this practice call for a possibility of centralization - using one package manager across multiple languages, yet, as the communities of distinct environments stay relatively separated, principles of each manager are different and conventions move at different paces and often in different directions, we are left with a specific set of tools for each language for at least the next couple of years.
+
+We will be talking about 'environments' more so than 'programming languages', to cover instances such as Bower or .NET framework, which span across a few of those, or something like node.js, which may be viewd as a subset of javascripts habitat. Albeit, in most cases they will be used as synonyms, refering to the language itself, and whatever system of libraries (modules, packages... ) it supports.
+
+#### Semantic versioning
+
+A brief note on semantic versioning before we move on to examples. As we were talking about different conventions, semver is perhaps the one actually being adopted by multiple separate programming communities and package managers. It is a standard that dictates the way a package developer should change the version of a package, which itself is of a format MAJOR.MINOR.PATCH, according to the following set of rules:
+
+MAJOR version when making incompatible API changes
+MINOR version when adding functionality in a backwards-compatible manner
+PATCH version when making backwards-compatible bug fixes(cit-semver)
+
+Semver is most prominent in the NPM community, though the other high-profile package manager pushing it is Ruby's Bundler.
+
+Despite the (short) documentation of the standard opening with claims of it helping with the so-called 'dependency hell'(cit-semver), and we do not wish to challenge these claims, from our perspective, that is - of someone being concerned primary about automatic dependency resolution - it is not of much use at all. The semver documentation specifically states that it has no intention of documenting the changes in dependencies - meaning that a patch version is free to remove every dependency that the package had since it inception as well as replace them with a completely new set, whilst still adhearing to the standard which semver has set.
+
+All in all, this means that while humans can use the information provided by it to instantly know how far can they push with upgrades before their application starts to break (provided that everything works as intended), package managers are still left in the dark in terms of knowing which version changes the dependencies or how severe this change is. We will get back to semantic versioning in the implementation chapter, but until then it serves no further purpose for this paper.
+
+#### Bundler
+
+#### Pip
+
+#### NuGet ?
+
+#### Other
+
+#### Node.js
+
+As the title of this paper suggests, we will be most interested in package managers set to work within the node.js environment. At the time of writing this paper, and to our knowledge, there are two such package managers available - NPM being the obvious one and also the one that is production ready (and used in production every day by thousands of programmers around the globe), with ied being more akin to a small experiment, taking on a different approach (and not yet working for general cases).
+
+##### NPM
+
+While we are going to compare  ... allowing the developers much more freedom with .. One may say that this additional degree of freedom is what lead a lot of people to perceive NPM as being prone to errors and inconsistencies. When in fact, if a different architecture of module dependencies, or a philosophy of one of the previously mentioned package managers (like bundler) was in place, many of the ready-to-use packages would not be even feasible to install on the given setup. Or, at minimum, the developers of these package would have to work much harder to keep their package compatible with the highest available version of their dependency, so that this version may be shared accross the whole project.
+
+TODO
+
+We could speculate that it was this freedom that made npm or maybe perhaps node.js as popular as it is today. The growth rate of NPM's repository is also currently unmatched (TODOimg cit-modcount), though if we were to take a more cynical look at this fact, the amount of modules which are a wild ideas at best, and unusable thrash at worst, is also non-trivial. TODO
+
+##### IED
 
 ## Discussion on current models (? or do this within the previous segment ?)
-
-### Semantic versioning and dependencies
 
 ### The need for shared dependencies
 
@@ -187,7 +223,7 @@ For each node, let us define two sets - privateExports and publicExports. These 
 
 The only source of errors comes from conflicting versions in the privateExports set (naturally, since everything else within the node is a subset of it). The only action available to us during the dependency tree resolution is the choice of version for a given package. In our proofs, we will often make the decision non-deterministically, since we have already proven the NP-completeness of this problem in general.
 
-The characteristics we set out to formally prove are as follows. First and foremost it is the correctness of our proposed design - we will prove by induction that with each step the resolvability assumed by our model satisfies the constrains we have set to require from a resolvable dependency tree. Secondly, we are to prove the one sided transformability of peer dependency model into our concept, and show that the other side of this implication fails if and only if we are faced with the kind of dependency tree that was described earlier (with nested, 'cascading' dependencies).
+The characteristics we set out to formally prove are as follows. First and foremost it is the correctness of our proposed design - we will prove by induction that with each step the resolvability assumed by our model satisfies the constrains we have set to require from a resolvable dependency tree. Secondly, we are to prove the one sided transformability of peer dependency model into our concept, TODO-other-side-works-too
 
 Thus, our set of axiom is:
 
@@ -204,6 +240,8 @@ TODO
 ### Node module system
 
 ### Simulated annealing
+
+TODO continue here! for presentation purposes
 
 ## Results
 
@@ -229,4 +267,10 @@ yum2) http://yum.baseurl.org/api/yum/yum/depsolve.html
 
 predep) https://www.debian.org/doc/debian-policy/ch-relationships.html
 
+port) http://dev.gentoo.org/~zmedico/portage/doc/pt02.html
+
+pkgman) http://blog.ezyang.com/2014/08/the-fundamental-problem-of-programming-language-package-management/
+
 sem) http://semver.org/
+
+modcount) http://www.modulecounts.com/
