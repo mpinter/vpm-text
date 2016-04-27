@@ -244,9 +244,37 @@ TODO
 TODO continue here! for presentation purposes
 Simulated annealing, in general, is a Monte Carlo method of for approximating a global optimum of a given function. It is an adaptation of a slightly older Metropolis-Hastings algorithm, essentially using technique from the area of study of thermodynamics to further improve the chances of it converging to the correct result. It has first apperd in a paper from 1983(cit-anneal).
 
-The method is especially usefull for finding a maximum (or a minimum) of a function which is hard to resolve on the entire domain but can be computed for a single point - or in other words sampled. We will later show how our problem is easily reducible to fit into the described setting. The high-level idea is taken from metallurgy, where the term describes the process of heated metals being allowed to cool down slowly, with their atoms being able to migrate along the crystal lattice. The higher the temperature, the easier it is for an atom to break it's bond and move, thus, as the metal is getting cooler, less and less changes are happening to it's structure. Analogically, when we 'simulate' the annealing process, we will start off with higher temeperature ...blah todo
+The method is especially usefull for finding a minimum (or a maximum) of a function which is hard to define over the entire domain but can be computed for a single point - or in other words sampled. We will later show how our problem is easily reducible to fit into the described setting. The high-level idea is taken from metallurgy, where the term describes the process of heated metals being allowed to cool down slowly, with their atoms being able to migrate along the crystal lattice. The higher the temperature, the easier it is for an atom to break it's bond and move, thus, as the metal is getting cooler, less and less changes are happening to it's structure. Using this mechanism, the mean value of overall energy of the system is able to spontaneously approach, and subsequently fluctuate around, a state of equillibrium(cit-anneal) - which will get progressively lower as the temperature decreases. Mentioned mean energy will be in a way analogous to our sampled function, with the state of equillibrium essentially represeting a local minimum.
 
+To put it all into the context of computer programming, when we 'simulate' the annealing process, we will create a random walk on a discreet states of the system (similarly to the Monte Carlo Markov Chain walk done in Metropolis-Hastings TODOcheck on this), where the probability of moving to the next state is based on it's 'energy' (the value of the examined function, or in other words the 'fitness' of the state) and the current temperature. The higher the temperature, the greater is also the probability that we allow for transition from a lower energy state to a higher one. This, just like in metallurgy, alows us to escape the local minima we might fall into, but    .... we will start off with higher temeperature -
 
+The general algorithm is thus as follow(cit-wiki?):
+
+Let s = s0
+For k = 0 through kmax (exclusive):
+T ← temperature(k ∕ kmax)
+Pick a random neighbour, snew ← neighbour(s)
+If P(E(s), E(snew), T) ≥ random(0, 1), move to the new state:
+s ← snew
+Output: the final state s
+
+#### Application
+
+There is a single, key difference in the application of this method to our problem as compared to the general case. The variable we are to minimize through the process of annealing is the number of conflicts in the dependency tree. For this variable, the global minimum we are trying to reach is know - that is, naturally, a state with zero conflicting dependencies. When this state is reached, we may safely abandon any further computation and claim it as our final solution. On the other hand - we can't be sure if this desired outcome exists in the system - maybe the hierarchy is inherently conflicting, without a way of resolving it.
+
+As we have already defined the way we are approaching the energy of our system, and following from it the definition of our state as a resolved dependency tree (whether conflicting or not), we only need TODO blah
+
+Rounding it up, our proposed setup for simulated annealing on dependency trees is as follows
+
+State - a fully resolved dependency tree, whether it is still conflicting or not
+
+Energy - the number of packages conflicting in the given state
+
+Mutations (defining neighbours for each state) - changing a single package version, where the package is a either a conflicting one, or a predecessor of one of the conflicting packages. The new version must satisfy the version range of at least one of the packages dependent on the mutated one - otherwise it is immediatle discarded as not being a valid neighbour and a new mutation is generated  (TODO how - keep prev for all other or match where possible ?)
+
+TODO code
+
+The results of our algorithm, as well as the different parameters used, are shown in the next chapter. We leave the question of using the technique of simulated annealing to find not only a non-conflicting state, but also the one usign the smallest number of dependencies (or the least amount of megabytes installed) to further research.
 
 ## Results
 
@@ -279,3 +307,5 @@ pkgman) http://blog.ezyang.com/2014/08/the-fundamental-problem-of-programming-la
 sem) http://semver.org/
 
 modcount) http://www.modulecounts.com/
+
+anneal) http://mkweb.bcgsc.ca/papers/cerny-travelingsalesman.pdf
