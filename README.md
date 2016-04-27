@@ -225,6 +225,12 @@ Before we continue with the comparion, a short note about peer dependency handli
 
 Each kind of resolvable (or unresolvable) dependency tree modeled using public dependencies can be modeled via peer dependencies, while preserving it's resolvability. The same is true for the opposite implication - every hierachy using peer dependencies can be rewritten into public ones without changing the status of it being resolvable. The formal proof of these theses will be presented further down the chapter.
 
+TODO conflict reasoning
+
+##### Maybe example isn't that bad of an idea in the end ?
+
+TODO show mainly copying and polluting
+
 ##### Key differences
 
 Let us now round up the main differences between the public and peer dependency approaches.
@@ -237,32 +243,88 @@ As we had already discussed before, what we consider a huge advantage of our pub
 
 In a certain aspect, peer dependencies are like public ones that are exported only a single step up the dependency tree - in contrast of public dependencies which bubble along any public branch and a single private branch. On the other hand, peer dependencies are copied over the dependency tree in case of a deep nesting. This means that with public dependencies it is computationaly harder to determine whether a conflict exists within the current hierarchy or not, but in turn, it buys us a level of clarity in our dependency tree, whereas peer dependencies 'pollute' every level of nesting they unwind onto.
 
-3. Inherited dependencies are not mandatory
+3. Public dependencies make the reasoning about conflicting nodes easier
+
+This issue is closely related with the previous one - because of the way the peer dependencies are required to be copied over the hierarchy (the chain of dependency - peer dependency we have talked before TODO!), it can be hard to immediately find the original offender if a conflict arises somewhere along one of such chains. In worst case, one would have to examine every subtree of each dependency of the parent of the conflicting node - a costly operation in comparison with the public dependency model, where (though this may be more of a implementation detail) the two colliding nodes are just one reference away. Even the simple action of calculating the amount of conflicts can be distorted by this same problem. The absence of both of these concerns is adopted in the simulated annealing algorithm we employ later.
+
+4. Inherited dependencies are not mandatory
 
 Whilst inherited public dependencies directly resemble peer dependencies in many ways, maybe even more so now in version 3 of NPM, the semantic role between the two is quite different. Each peer dependency essentialy tells us to 'require a certain version of a given dependency to be installed on a parent package' (despite the fact that avoiding any installed version completely only yields an ignorable error) , while the condition set byt an inherited public dependency is a bit softer - 'make sure that if any other dependency for the same package appears on this level, it matches the version set by the public dependency inherited from'.
 Of course, when being compared to NPMv2, the difference is obvious, taking older NPMs automatic installation into account - although one may argue that in our concept all of the public dependencies are installed no matter what, which is true and may be considered a drawback (and once again, is a discussion for the implementation chapter). Yet, the installed public dependencies are hidden in the 'local' scope of the dependency which required it, and are exposed to the outside world (in a way that it can access it) only when they are explicitly required there.
 
 ### Formalization
 
-We shall now prepare the theoretical apparatus we are going to use to formaly prove the correctness of our approach and the one sided equivalence in regards to the peer dependency based model.
+We shall now prepare the theoretical apparatus we are going to use to formaly prove the equivalence of our approach in regards to the peer dependency based model (except for borderline cases outlined in the last paragraph TODO).
 
 Firstly, let us establish the dependency tree as a graph of nodes - which represent a package resolved in a concrete version - and edges, which represent a dependency requirement, whether it is public or private. In this and the following section, we will be adressing these edges (or relations between nodes) as dependencies, as opposed to the term dependency denoting a required package itself up to this point. Without explicitly stating otherwise, the term dependency will now be used exclusively in this way.
 
-For each node, let us define two sets - privateExports and publicExports. These will mark the dependencies exported from the children of the given node along either a public or private dependency. The privateExports set then stays private to the node, while publicExports is the set exported from it by the means of both public and private dependency. The reference to node itself is contained in it's own publicExports set, which is in turn always a subset of publicExports.
+For each node, let us define two sets - privateImports and publicExports. These will mark the dependencies exported from the children of the given node along either a public or private dependency. The privateImports set then stays private to the node, while publicExports is the set exported from it by the means of both public and private dependency. The reference to node itself is contained in it's own publicExports set, which is in turn always a subset of publicExports.
 
-The only source of errors comes from conflicting versions in the privateExports set (naturally, since everything else within the node is a subset of it). The only action available to us during the dependency tree resolution is the choice of version for a given package. In our proofs, we will often make the decision non-deterministically, since we have already proven the NP-completeness of this problem in general.
+TODO equation subsets
 
-The characteristics we set out to formally prove are as follows. First and foremost it is the correctness of our proposed design - we will prove by induction that with each step the resolvability assumed by our model satisfies the constrains we have set to require from a resolvable dependency tree - that is, after each step we are able to correctly declare whether the tree is conflicting or not by using our proposed model (TODO - are we actually doing this ?). Secondly, we are to prove the equivallence with the peer dependency model
+Additionaly, for the peer dependecy hierarchies we will be needing the children set. Let children(A) define the set of all children of an arbitrary resolved node A - whether they were direct dependencies of A or were resolved in their place through a chain of peer dependencies. Private/public imports/exports will be specified in a similar fashion - privateImports(A) being the privateImports set of a node A.
+
+The only source of errors comes from conflicting versions in the privateImports set (naturally, since everything else within the node is a subset of it). The only action available to us during the dependency tree resolution is the choice of version for a given package. In our proofs, we will often make the decision non-deterministically, since we have already proven the NP-completeness of this problem in general.
+
+The characteristics we set out to formally prove are as follows. First and foremost TODOHERE induction over the available steps or actions in both of the models. TODOequivalence TODOinstallation of both v2 and v3
 
 #### Peer dependency model
 
-We are going to split the formal definition into two subsections, so that it best suites us in our inductive proof later. The first one describes the 'growth' of the dependency tree, while the second one is concerned with the reviewing of peer dependencies and identifying possible conflicts. As a matter of fact, this also mirrors the way that both our package manager and many of the aforementioned others approach the problem - re (with some featuring also a third step, that being dependency resolution).
+We are going to split the formal definition into two subsections, so that it best suites us in our inductive proof later. The first one describes the 'growth' of the dependency tree, while the second one is concerned with the reviewing of peer dependencies and identifying possible conflicts. As a matter of fact, this also mirrors the way that both our package manager and many of the aforementioned others approach the problem - resolving the hierarchy first before continuing on with collision checking (with some featuring also a third step, that being dependency resolution).
+
+For the sake of simplicity, we will use the model of NPMv2 - the one where every peer dependency is automatically installed. Thus, we don't have to deal with the status of warnings of uninstalled-yet-nonconflicting dependencies and the additional duplication, both being problems introduced to our proof by NPMv3. We will outline the differeces of this version later down the line.
+
+For any unresolved or partially resolved dependency tree using the concept of peer dependencies, we have (just like in the case of public dependencies) only a single action available to us - choosing a version of an unresolved dependency, within the bounds of the version interval defined by it's parent. In doing so, one or more of the following situations may arise:
+
+1) The resolved package had no dependencies
+
+2) One or more private dependencies are added as children of a resolved package
+
+3) One or more peer depedencies are added on the same level as the resolved package, while the resolved package is a private dependency
+
+4) One or more peer depedencies are added on the same level as the resolved package, while the resolved package is also a peer dependency
+
+Step four might seem redundant in the current context, but will come to play as we will begin to mirror the public dependency model.
+
+The review step is rather trivial in this case - we simply check each level and look whether it has any peer dependencies which conflict. Therefore, the only rule we need is a follows:
+
+Let us choose an arbitrary node A. Then packages B and C are conflicting if TODO BCechildren(A), B.name == C.name and B.version != C.version, meaning they represent the same package in different versions. This is the only kind of conflicts which may appear within this model.
 
 #### Proposed model
 
 Again, we first define the steps applied during the construction of the hierarchy, and subsequently the ones concerned with checking the correctness of public dependencies within it.
 
-#### Proof
+Once again, the only action available is the one of a single package resolution, upon which one or more of the following may happen:
+
+1) The resolved package had no dependencies and did not conflict with any other public dependency
+
+2) One or more private dependencies are added as children of a resolved package
+
+3) One or more public dependencies are added as children of a resolved package, while the packate itself is a private dependency
+
+4) One or more public dependencies are added as children of a resolved package, while the packate itself is a public dependency
+
+During the review step, we need to collect the exported public dependencies along the public branches, as was specified earlier. For a pair of nodes A and B:
+
+1) If B is a private dependency of A, then privateImports(A) cont publicExports(B)
+
+2) If B is a public dependency of A, then publicExports(A) cont publicExports(B)
+
+3) A conflict exists on an arbitrary node A for B,C if TODO BCeprivate(A), B.name == C.name and B.version != C.version, no other source of conflicts exists
+
+#### Proofs
+
+Proof 1 - For every dependency tree using the peer dependency model exists an equivalent
+
+Proof 2 -
+
+Corollary 1 -
+
+Corollary 2 - Backwards compatibility exists an equivalent TODO HERE
+
+##### NPMv3's model
+
+In the newest verion of NPM, peer dependencies are handled a bit differently, which slightly changes our argumentation in the proof of resolvability equivalence. Peer dependencies in version three, instead of being installed automatically, require a regular kind of dependency on the parent of the package they are defined on. This will handle the installation itself, just as it would even without the peer dependency.
 
 ## Implementation
 
