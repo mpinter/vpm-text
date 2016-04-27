@@ -242,6 +242,11 @@ TODO
 ### Simulated annealing
 
 TODO continue here! for presentation purposes
+Simulated annealing, in general, is a Monte Carlo method of for approximating a global optimum of a given function. It is an adaptation of a slightly older Metropolis-Hastings algorithm, essentially using technique from the area of study of thermodynamics to further improve the chances of it converging to the correct result. It has first apperd in a paper from 1983(cit-anneal).
+
+The method is especially usefull for finding a maximum (or a minimum) of a function which is hard to resolve on the entire domain but can be computed for a single point - or in other words sampled. We will later show how our problem is easily reducible to fit into the described setting. The high-level idea is taken from metallurgy, where the term describes the process of heated metals being allowed to cool down slowly, with their atoms being able to migrate along the crystal lattice. The higher the temperature, the easier it is for an atom to break it's bond and move, thus, as the metal is getting cooler, less and less changes are happening to it's structure. Analogically, when we 'simulate' the annealing process, we will start off with higher temeperature ...blah todo
+
+
 
 ## Results
 
