@@ -266,6 +266,8 @@ Additionaly, for the peer dependecy hierarchies we will be needing the children 
 
 The only source of errors comes from conflicting versions in the privateImports set (naturally, since everything else within the node is a subset of it). The only action available to us during the dependency tree resolution is the choice of version for a given package. In our proofs, we will often make the decision non-deterministically, since we have already proven the NP-completeness of this problem in general.
 
+The only borderline .. Since we do not allow for multiple versions of the same package on a single level (meaning - as two separate dependecies for the same package), we can't really model the situation where a single packageTODO.. To our knowledge, this kind of practice was never a part of any of the publicly used NPM packages.
+
 The characteristics we set out to formally prove are as follows. First and foremost TODOHERE induction over the available steps or actions in both of the models. TODOequivalence TODOinstallation of both v2 and v3
 
 #### Peer dependency model
@@ -314,11 +316,28 @@ During the review step, we need to collect the exported public dependencies alon
 
 #### Proofs
 
-Proof 1 - For every dependency tree using the peer dependency model exists an equivalent
+Thesis 1 - For every dependency tree using the peer dependency model exists an equivalent tree using public dependencies, which installs the same packages, in the same versions, and is resolvable if and only if the original tree was also resolvable
+
+Proof 1 - We will split the proof in a similar fashion as we did previously - into the construction and the dependency resolution parts
+
+Construction
+
+Induction over the situations which occur after a signle package version is resolved. The base of induction is a root package with no dependencies - which is the same situation with no actions in either model.
+
+Induction step iterates over the given options - we will skip points one and two, since their equivallence between the two models is trivial.
+
+One or more peer depedencies are added on the same level as the resolved package, while the resolved package is a private dependency
+In our proposed model, we instead
+
+4) One or more peer depedencies are added on the same level as the resolved package, while the resolved package is also a peer dependency
+
+Thesis 2 - For every dependency tree using the public dependency model exists an equivalent tree using peer dependencies, which installs the same packages, in the same versions, and is resolvable if and only if the original tree was also resolvable
 
 Proof 2 -
 
 Corollary 1 -
+
+We had a second question in mind during the construction of previous proofs. As we have mentioned briefly regarding the ignored borderline case in the overview, you can always perform this kind of transformation by only adding private dependencies and using the original model as a guide TODOthis is only baout construction, what about resolution?
 
 Corollary 2 - Backwards compatibility exists an equivalent TODO HERE
 
