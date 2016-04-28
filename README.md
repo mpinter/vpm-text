@@ -264,11 +264,11 @@ TODO equation subsets
 
 Additionaly, for the peer dependecy hierarchies we will be needing the children set. Let children(A) define the set of all children of an arbitrary resolved node A - whether they were direct dependencies of A or were resolved in their place through a chain of peer dependencies. Private/public imports/exports will be specified in a similar fashion - privateImports(A) being the privateImports set of a node A.
 
-The only source of errors comes from conflicting versions in the privateImports set (naturally, since everything else within the node is a subset of it). The only action available to us during the dependency tree resolution is the choice of version for a given package. In our proofs, we will often make the decision non-deterministically, since we have already proven the NP-completeness of this problem in general.
+The only source of errors comes from conflicting versions in the privateImports set (naturally, since everything else within the node is a subset of it). The only action available to us during the dependency tree resolution is the choice of version for a given package. In our proofs, we may make the decision non-deterministically, since we have already proven the NP-completeness of this problem in general.
 
 The only borderline .. Since we do not allow for multiple versions of the same package on a single level (meaning - as two separate dependecies for the same package), we can't really model the situation where a single packageTODO.. To our knowledge, this kind of practice was never a part of any of the publicly used NPM packages.
 
-The characteristics we set out to formally prove are as follows. First and foremost TODOHERE induction over the available steps or actions in both of the models. TODOequivalence TODOinstallation of both v2 and v3
+The characteristics we set out to formally prove are as follows. First and foremost TODOHERE induction over the available steps or actions in both of the models. TODOequivalence TODOinstallation of both v2 and v3 TODO define resolvability
 
 #### Peer dependency model
 
@@ -282,15 +282,15 @@ For any unresolved or partially resolved dependency tree using the concept of pe
 
 2) One or more private dependencies are added as children of a resolved package
 
-3) One or more peer depedencies are added on the same level as the resolved package, while the resolved package is a private dependency
-
-4) One or more peer depedencies are added on the same level as the resolved package, while the resolved package is also a peer dependency
-
-Step four might seem redundant in the current context, but will come to play as we will begin to mirror the public dependency model.
+3) One or more peer depedencies are added on the same level as the resolved package
 
 The review step is rather trivial in this case - we simply check each level and look whether it has any peer dependencies which conflict. Therefore, the only rule we need is a follows:
 
 Let us choose an arbitrary node A. Then packages B and C are conflicting if TODO BCechildren(A), B.name == C.name and B.version != C.version, meaning they represent the same package in different versions. This is the only kind of conflicts which may appear within this model.
+
+Lemma 1 - By using only the action of choosing a version of an undecided dependency, we can reconstruct any reolved dependency tree (which uses the concept of peer dependencies) given to us, whilst only one or more of the three previously described situations may arise after each such choice.
+
+Proof - The proof is constructive - in that, we start from the root and begin resolving dependencies in the same versions as they are in the hierarchy we want to copy. When a package is locked to a concrete version,
 
 #### Proposed model
 
@@ -302,9 +302,7 @@ Once again, the only action available is the one of a single package resolution,
 
 2) One or more private dependencies are added as children of a resolved package
 
-3) One or more public dependencies are added as children of a resolved package, while the packate itself is a private dependency
-
-4) One or more public dependencies are added as children of a resolved package, while the packate itself is a public dependency
+3) One or more public dependencies are added as children of a resolved package
 
 During the review step, we need to collect the exported public dependencies along the public branches, as was specified earlier. For a pair of nodes A and B:
 
@@ -316,34 +314,49 @@ During the review step, we need to collect the exported public dependencies alon
 
 #### Proofs
 
-Thesis 1 - For every dependency tree using the peer dependency model exists an equivalent tree using public dependencies, which installs the same packages, in the same versions, and is resolvable if and only if the original tree was also resolvable
+Thesis 1 - For every dependency tree using the peer dependency model exists an equivalent tree using public dependencies, which installs the same packages, in the same versions, and is resolvable if and only if the original tree was also resolvable. The only exception from this are hierarchies which include packages that specify the same depepndency in two different versions, once as peer dependency and once as private dependency.
 
-Proof 1 - We will split the proof in a similar fashion as we did previously - into the construction and the dependency resolution parts
+Proof 1
+
+The reason for excluding the borderline case was covered before. We will split the proof in a similar fashion as we did previously - into the construction and the dependency resolution parts.
 
 Construction
 
-Induction over the situations which occur after a signle package version is resolved. The base of induction is a root package with no dependencies - which is the same situation with no actions in either model.
+Induction over the situations which occur after a single package version is resolved. The base of induction is a root package with no dependencies - which is the same situation with no actions in either model.
 
-Induction step iterates over the given options - we will skip points one and two, since their equivallence between the two models is trivial.
+Induction step always includes the action of resolving a package to a concrete version - that is present and equivalent in both models - after which it iterates over the given options. We will skip points one and two right away, since the equivalence between their counterparts is trivial. For the third point, we instead add a public dependency as a child of the current package - no further action is needed just yet. In this way, it is shown that we can mirror each step of the peer dependency tree construction, and following Lemma 1, proves that we can reconstruct any peer dependency hierarchy using public dependencies.
 
-One or more peer depedencies are added on the same level as the resolved package, while the resolved package is a private dependency
-In our proposed model, we instead
+Resolvability
 
-4) One or more peer depedencies are added on the same level as the resolved package, while the resolved package is also a peer dependency
+What is left to prove is that the newly constructed hierarchy will be resolvable if and only if the same can be said about the original, peer dependency based one. While the construction worked with the tree being build from bottom up, now we need to show that the peer dependency propagation works from top down in a way similar to the one used by public dependencies. A brief reminder that we are still working with NPMv2's mandatory peer dependency model - in NPMv3 this propagation would need have been maintained by the package developers of each of the dependencie.
 
-Thesis 2 - For every dependency tree using the public dependency model exists an equivalent tree using peer dependencies, which installs the same packages, in the same versions, and is resolvable if and only if the original tree was also resolvable
+Lemma 3 - If a package P1 is a private dependency of root package R, and we have a chain of peer dependendencies where P2 has a peer dependency on P1, P3 has a peer dependency on P2 ... Pn has a peer dependency on Pn-1, then all the packages P1 to Pn will be resolved as the children of root R.
 
-Proof 2 -
+Proof - By induction on the length of the chain. Basis is trivial, with chain length being 0. Induction step - we have n packages, each is a peer dependency of the previous one and all of them are resolved as children of a single node. We add a peer dependency requirement for a package n+1 on the last of the reolved packages. This peer dependency will be automatically resolved (we are taking only non-conflicting dependencies into account, a confict will abort this chaining, which is fine for us), on the same level as the package that required it - meaning they will share the same parent.
 
-Corollary 1 -
+Following Lemma 3, we can draw the equivalence between chains of public dependencies and those of peer dependencies (additionaly, the same rules apply for the 'chain' of length 1). The only way a conflict may arise in the two models is if two copies of the same package, in different versions ends up in the same set of an arbitrary node - this set being children(A) for peer and privateImports(A) for public dependencies. In the NPM model, each node in the chain of peers ends up as child of the parent of the first node of this chain - let us call it root R - thus the only place where the conflict within the chain needs to be detected is in the set children(R). On the other hand, since public dependencies are exported one step past the last public branch - that being the same root package as in the case of peer dependencies if we have copied their hierarchy - the only place needed to check in this case is privateImports(R). Though the conflict may arise earlier on one of the nodes deeper in the chain of dependencies, it is trivial to show that the privateImports sets on these nodes must be strict subsets of the privateImports of the root of the chain, since during each step, dependencies are only added (and at least one is added per step). Following the rules set for exporting public dependencies, since a private brach essetialy halts any further public dependency propagation, we can be sure that no dependencies outside of the chain were exported , and therefore prove the equivalence of the sets children(R) and privateImports(R). The dependency check 'algorithm' on these two is the same - finally proving our proposed thesis.
 
-We had a second question in mind during the construction of previous proofs. As we have mentioned briefly regarding the ignored borderline case in the overview, you can always perform this kind of transformation by only adding private dependencies and using the original model as a guide TODOthis is only baout construction, what about resolution?
+Thesis 2 - For every dependency tree using the public dependency model exists an equivalent tree using peer dependencies, which installs the same packages, in the same versions, and is resolvable if and only if the original tree was also resolvable.
 
-Corollary 2 - Backwards compatibility exists an equivalent TODO HERE
+Proof 2 - The proof of the second implication is in many ways equivalent to the previous one. Since we have actually proven equivalence of both approaches on each step of the proof, there is no need to repeat ourselves with the opposite direction. The only major difference here is the fact that we no longer need to exclude the borderline case - the reversed transformation works every time.
+
+Corollary 1 - Except for the case of private dependency not agreeing with packages own peer dependency, the public dependency approach is functionaly equivalent to the peer dependency model of NPMv2.
+
+We had a second question in mind during the construction of previous proofs. As we have mentioned briefly regarding the ignored borderline case in the overview, you can always perform this kind of transformation by only adding private dependencies and using the original model as a guide, and the resulting hierarchy will resolve into the same set of packages, although the rules of this transformation will be much less legible then the current ones. Thus, the construction proof on it's own is not of that great of a value, yet, in the way we had modeled it, we have also proven the following premise.
+
+Corollary 2 - The public dependency model is backwards compatible with NPMv2's model of peer dependencies, in a way where treating every peer dependency in the definition of each package as public will yield a hierarchy equivalent to the original one using peer dependencies.
 
 ##### NPMv3's model
 
 In the newest verion of NPM, peer dependencies are handled a bit differently, which slightly changes our argumentation in the proof of resolvability equivalence. Peer dependencies in version three, instead of being installed automatically, require a regular kind of dependency on the parent of the package they are defined on. This will handle the installation itself, just as it would even without the peer dependency.
+
+This would make the reasoning in some of the parts of the previous proof much more difficult, and version 3's model was therefore avoided for the time being. Yet, as we still claim both the backwards compatibility and equivalence with NPMv3 - though both are harder to define due to the nature of peer dependency warnings - we will analyze the changes that are needed to be done in the proof, in order for it to work with said version.
+
+Maybe the biggest change in regards for this model is in warnings for missing peer dependencies. If we were to treat them as errors - that is, consider the dependency tree yielding them as unresolvable - we would lose on some of the functionality of inherited public dependencies, which we have defined not be mandatory. Assuming that these dependencies will be satisfied essentialy returns us to the concept of version 2, which we had used in the end.
+
+On the other hand, the biggest hurdle related to the formalization of this model is in the need of package repetition along the aforementioned peer dependency chain. As mentioned in the first paragraph of this section, since the dependecies are not automatically installed, we can't
+
+TODO
 
 ## Implementation
 
