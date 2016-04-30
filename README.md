@@ -36,7 +36,7 @@ Dependency tree - describes the dependencies of a certain program or module and 
 
 Private dependendency - a dependency that is used only by the package that required it and is not shared within the dependency tree.
 
-Public dependency - or a shared dependency, a dependency required by two or more packages within the dependency tree. More specifically, we're talking about the situation where the given packages are sharing the exact same files (or functions or classes), in contrast with using two copies of the same module in certain version - the latter still being considered a situation with two separate private dependencies.
+Shared dependency - a dependency required by two or more packages within the dependency tree. More specifically, we're talking about the situation where the given packages are sharing the exact same files (or functions or classes), in contrast with using two copies of the same module in certain version - the latter still being considered a situation with two separate private dependencies.
 
 Package manager - in general, describes a program meant to resolve the dependency tree given a certain recipe to do so. The amount of proactivity doing this varies largly between different managers and environments.
 
@@ -48,7 +48,7 @@ Let us first reason about rationale behind the topic of this paper. We will esta
 
 The NP complexity class covers a set of decision problems for which exists a nondeterminitic algorithm that runs in polynomial time.(cit-complx) Within it resides the NP-complete subclass. If a problem is said to be NP-complete, any other problem which belongs to the NP complexity class is reducible to it in polynomial time. We will show that the decision problem of whether a given set of dependences is installable (without any conflicts) is NP-complete, and thus creating an algorithm that is guaranteed to find a correct answer to this question in general case (and on current harware with a reasonable amount of time) is rather unlikely. The formal proof we present is taken from (cit-todo).
 
-TODO
+The proof is by reduction of a CNF-SAT problem to the one of installing a set of dependencies in a way that they are all satisfied. It creates a package for each variable that exists in the formula, with two versions - one representing the case when variable is false or negated, other for a true version. Additionaly, packages of another kind are created for each clause, having the appropriate versions of the variable-packages as dependencies - base on the fact whether the negation of the variable is included or not. This reduction can clearly be done in polynomial time. It can be proven that if we encode any SAT formula (in conjunctive normal form) into packages in said way, the resulting installation will be non-conflicting if and only if the original boolean formula was satisfiable. Additional details, as well as the whole proof can be found in (cit-hardness)
 
 ## Package managers
 
@@ -120,16 +120,6 @@ Despite the (short) documentation of the standard opening with claims of it help
 
 All in all, this means that while humans can use the information provided by it to instantly know how far can they push with upgrades before their application starts to break (provided that everything works as intended), package managers are still left in the dark in terms of knowing which version changes the dependencies or how severe this change is. We will get back to semantic versioning in the implementation chapter, but until then it serves no further purpose for this paper.
 
-#### Bundler
-
-Bundler is the primary package manager for ruby applications - or in the community's lingo, it is a 'gem to manage gems' (gems are ruby's packages). In a fashion similar to python, ruby does not really support having multiple versions of the same package available as dependencies to different ones (since there is no module system akin to the one in node.js that would attempt to resolve the package within it's namespace). TODO?
-
-As far as the resolve algorithm goes, Bundler have actually changed it's reslolver backend just in march of this year - previously, it used a custom one, presently the Molinillo resolver from CocoaPods (a package manager for Cocoa) has took it's place. Yet, both of said resolvers take essentially a common aproach to to the problem - the one of backtracking the dependencies in case of conflict, with Molinillo having the advantage of performing a lookahead.
-
-That is, at heart, both of the algorithms mark gems as prepared for installation greedily, and once a confict emerges, they try to recursively solve the problem. Note that this means that Bundler, unlike for example NPM, performs a separate precomputation step on required dependencies (and tries to solve the conflicts) before continuing with the install step.
-
-Let us perhaps briefly adress the criticism that tends to be leveled against NPM in comparison with Bundler - the latter having a better reputation of installing what is needed without the need of developer intervention. The algorithm Bundler uses for automatic resolution might be problematic to use in node.js's package format environment. First of, this is in part due to the nature of the structure of packages - or how carefull they need to be with their requirements. Without the ability to add multiple versions of a single package to the same program, the authors of the gems, if they want them to be used by as many people as possible, need to ensure they do not require any gem that locks them out of a spectrum of projects for which it would conflict. Secondly, there is the structure of the dependency tree itself - with Bundler's being flat, the recursion on it is also shallower than it may be in a comparably large node.js project.
-
 #### Pip
 
 As it is with many of the names given by the programming community, PIP is also a recursive acronym, which can stand for either "Pip Installs Packages" or "Pip Installs Python". That is, PIP serves as a package manager in the Python universe, working in conjunction with Python Package Index to find and download the desired modules.
@@ -147,9 +137,21 @@ a. "first found, wins" (where the order is breadth first)
 
 This issue has been open at least since Jun of 2013 and does not look to be resolved any time soon. Note that python itself does not support multiple versions of the same module - since they are not being namespaced, they would collide under the global scope. Here, everything related to dependency resolution is left up to the programmer.
 
-#### NuGet ?
+#### Bundler
+
+Bundler is the primary package manager for ruby applications - or in the community's lingo, it is a 'gem to manage gems' (gems are ruby's packages). In a fashion similar to python, ruby does not really support having multiple versions of the same package available as dependencies to different ones (since there is no module system akin to the one in node.js that would attempt to resolve the package within it's namespace). TODO?
+
+As far as the resolve algorithm goes, Bundler have actually changed it's resolver backend just in march of this year - previously, it used a custom one, presently the Molinillo resolver from CocoaPods (a package manager for Cocoa) has took it's place. Yet, both of said resolvers take essentially a common aproach to to the problem - the one of backtracking the dependencies in case of conflict, with Molinillo having the advantage of performing a lookahead.
+
+That is, at heart, both of the algorithms mark gems as prepared for installation greedily, and once a confict emerges, they try to recursively solve the problem. Note that this means that Bundler, unlike for example NPM, performs a separate precomputation step on required dependencies (and tries to solve the conflicts) before continuing with the install step.
+
+Let us perhaps briefly adress the criticism that tends to be leveled against NPM in comparison with Bundler - the latter having a better reputation of installing what is needed without the need of developer intervention. The algorithm Bundler uses for automatic resolution might be problematic to use in node.js's package format environment. First of, this is in part due to the nature of the structure of packages - or how carefull they need to be with their requirements. Without the ability to add multiple versions of a single package to the same program, the authors of the gems, if they want them to be used by as many people as possible, need to ensure they do not require any gem that locks them out of a spectrum of projects for which it would conflict. Secondly, there is the structure of the dependency tree itself - with Bundler's being flat, the recursion on it is also shallower than it may be in a comparably large node.js project.
 
 #### Other
+
+As a popular paraphrase of Jane Austen's Pride and Prejudice goes - "It is a truth universally acknowledged that a programming language must be in want of a package manager.". That is, numerous package managers exists for many of the very large list of languages that have became popular over the years. There are also those which are not necessarily constrained to a signle language, like Bower, that manages the 'front-end' webpage dependencies, from javascript to css related plugins. It has a flat structure of dependencies and offers an interactive mode for users to resolve conflicts on their own.
+
+Then there is NuGet, the package manager for the Microsoft development platform including .net framework(TODOcit). It does not support multiple versions of the same package and again uses a set of heuristics to choose a correct one in case of conflicts (usign either the nearest, lowest possible or highest possible version, depending on the package version definition and circumstances). Or from the set of language specific ones, we have Cabal, a manager for Haskell, for which a special term of Cabal Hell has been introduced - and naturally, it also does not feature conflict resolution. This list can go on for quite a while, but we can already see the general pattern of how this problem is being handled.
 
 #### Node.js
 
@@ -171,13 +173,19 @@ Probably the main feature of IED, and the way it stands out the most in comparis
 
 Still, it does not offer any kind of dependency resolution, and in fact fails on some of the packages which are installable using NPM - though this may be attributed to it being a younger and much smaller project. It also does not support packages referenced via a git url.
 
-## Discussion on current models (? or do this within the previous segment ?)
+### Discussion on current models
+
+### Conflict resolution
+
+As we have seen, the package managers with most advanced - and most 'complete' in the sense of resolving the hierarchy when possible - conflict resolutions algorithms are typically the ones which handle installation of system dependencies. With programming language related managers, there tends to be a more of an utilitarian approach - since the simpler, more bruteforce way of handling things (maybe with a couple of heuristics which were shown to work) seems to get the job done in most cases, the completeness is traded perhaps for speed - running a SAT solver is no small task - or predictability - as something like SAT solver may change the . Still, we believe that there is a place for a package manager that, albeit slower, provides better guarantees on ending up with a resolved dependency tree without any human involvement. Few extra minutes of processor time are certainly cheaper and less valuable then an hour of developers time, and that is not even accounting for the shortening of his lifespan caused by the stress of manual dependency resoluton.
 
 ### The need for shared dependencies
 
 First of let us establish that we will be talking about shared dependencies in the sense of two packages requiring to agree on a same version on one of more of their dependencies (and in some cases also the need to agree on its subdependencies), in contrast with two packages linking to the same package installed on the disk - although the former may often imply the latter, the opposite implication is much rarer (at least in the world of node.js).
 
-TODO ? or wat
+Although it might not have been all that evident from the previous rundown, there are two primary problems which cause all the package dependency conflicts to emerge. The first one is caused by the constraint on language or environment, which can import only one version of a package at time. There is not much that can be done about that, at least from a point of view of the authors of the package managers. The second one are shared dependencies - or in some of the cases, even the complete lack of private dependency option. Once you have a package which locks a version of a dependency for the whole system, it is only a matter of time until the given conflict arises.
+
+On the other hand - while you can, in theory, work with shared dependencies only, it is not possible to do the same with private ones. The reason are plugins, or packages that augment the functonality of different ones in general. With these, you need a way to specify the exact version of cooperating package - or, so to say, what should the plugin plug into. Without such option, there may be unforseen consequencess resulting from an incorrect plugging. Therefore, even if NPM tries to enforce private dependencies as much as it can, conflicts from it using peer dependencies (which is it's way of solving this need, since as we had said, they had to have one) still arise.
 
 ## Public dependencies - our model
 
@@ -366,6 +374,8 @@ This is an important aspect of our design, since it allows us to use it in the p
 
 ## Implementation
 
+
+
 ### Node.js module system
 
 ### Simulated annealing
@@ -374,7 +384,7 @@ Simulated annealing, in general, is a Monte Carlo method of for approximating a 
 
 The method is especially usefull for finding a minimum (or a maximum) of a function which is hard to define over the entire domain but can be computed for a single point - or in other words sampled. We will later show how our problem is easily reducible to fit into the described setting. The high-level idea is taken from metallurgy, where the term describes the process of heated metals being allowed to cool down slowly, with their atoms being able to migrate along the crystal lattice. The higher the temperature, the easier it is for an atom to break it's bond and move, thus, as the metal is getting cooler, less and less changes are happening to it's structure. Using this mechanism, the mean value of overall energy of the system is able to spontaneously approach, and subsequently fluctuate around, a state of equillibrium(cit-anneal) - which will get progressively lower as the temperature decreases. Mentioned mean energy will be in a way analogous to our sampled function, with the state of equillibrium essentially represeting a local minimum.
 
-To put it all into the context of computer programming, when we 'simulate' the annealing process, we will create a random walk on a discreet states of the system (similarly to the Monte Carlo Markov Chain walk done in Metropolis-Hastings TODOcheck on this), where the probability of moving to the next state is based on it's 'energy' (the value of the examined function, or in other words the 'fitness' of the state) and the current temperature. The states proposed in the transitions are called the 'neighbours' of the current state. The higher the temperature, the greater is also the probability that we allow for transition from a lower energy state to a higher one. This, just like in metallurgy, allows us to escape the local minima we might fall into, but as the temperature descreases over time, makes us fluctuate around a single state - which should represent the global minimum we were searching for.
+To put it all into the context of computer programming, when we 'simulate' the annealing process, we will create a random walk on a discreet states of the system (similarly to the Monte Carlo Markov Chain walk done in Metropolis-Hastings - essentially, we can say that the core of the algorithm is still the same, but it is wrapped in another loop which gradually reduces the temperature), where the probability of moving to the next state is based on it's 'energy' (the value of the examined function, or in other words the 'fitness' of the state) and the current temperature. The states proposed in the transitions are called the 'neighbours' of the current state. The higher the temperature, the greater is also the probability that we allow for transition from a lower energy state to a higher one. This, just like in metallurgy, allows us to escape the local minima we might fall into, but as the temperature descreases over time, makes us fluctuate around a single state - which should represent the global minimum we were searching for.
 
 The general algorithm is thus as follow(cit-wiki?):
 
@@ -447,3 +457,5 @@ mol) https://github.com/CocoaPods/Molinillo/blob/master/ARCHITECTURE.md
 pip) https://github.com/pypa/pip/issues/988
 
 complx) Alsuwaiyel, M. H.: Algorithms: Design Techniques and Analysis
+
+hardness) https://people.debian.org/~dburrows/model.pdf
