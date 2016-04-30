@@ -122,19 +122,17 @@ All in all, this means that while humans can use the information provided by it 
 
 #### Bundler
 
-... In a fashion similar to python, ruby does not really support having ..(since there is no module system akin to the one in node.js that would attempt to resolve the package within it's namespace). TODO
+Bundler is the primary package manager for ruby applications - or in the community's lingo, it is a 'gem to manage gems' (gems are ruby's packages). In a fashion similar to python, ruby does not really support having multiple versions of the same package available as dependencies to different ones (since there is no module system akin to the one in node.js that would attempt to resolve the package within it's namespace). TODO?
 
 As far as the resolve algorithm goes, Bundler have actually changed it's reslolver backend just in march of this year - previously, it used a custom one, presently the Molinillo resolver from CocoaPods (a package manager for Cocoa) has took it's place. Yet, both of said resolvers take essentially a common aproach to to the problem - the one of backtracking the dependencies in case of conflict, with Molinillo having the advantage of performing a lookahead.
 
-That is, at heart, both of the algorithms mark ..TODO.. Note that this means that Bundler, unlike for example NPM, performs a separate precomputation step on required dependencies (and tries to solve the conflicts) before continuing with the install step.
+That is, at heart, both of the algorithms mark gems as prepared for installation greedily, and once a confict emerges, they try to recursively solve the problem. Note that this means that Bundler, unlike for example NPM, performs a separate precomputation step on required dependencies (and tries to solve the conflicts) before continuing with the install step.
 
-//between a full fledged SAT solver and plain simple osstrich based style of ignoring the problem and leaving it to developer.
-
-//Regarding this algorithm, let us perhaps briefly adress the criticism that tends to be leveled against NPM in comparison with
+Let us perhaps briefly adress the criticism that tends to be leveled against NPM in comparison with Bundler - the latter having a better reputation of installing what is needed without the need of developer intervention. The algorithm Bundler uses for automatic resolution might be problematic to use in node.js's package format environment. First of, this is in part due to the nature of the structure of packages - or how carefull they need to be with their requirements. Without the ability to add multiple versions of a single package to the same program, the authors of the gems, if they want them to be used by as many people as possible, need to ensure they do not require any gem that locks them out of a spectrum of projects for which it would conflict. Secondly, there is the structure of the dependency tree itself - with Bundler's being flat, the recursion on it is also shallower than it may be in a comparably large node.js project.
 
 #### Pip
 
-TODO
+As it is with many of the names given by the programming community, PIP is also a recursive acronym, which can stand for either "Pip Installs Packages" or "Pip Installs Python". That is, PIP serves as a package manager in the Python universe, working in conjunction with Python Package Index to find and download the desired modules.
 
 It's hard to talk about any kind of dependency resolution within pip - essentially all is left upon the user. Pip has a straightforward way of installing packages which goes as follows(cit-pip):
 
@@ -147,7 +145,7 @@ for sub-dependencies
 
 a. "first found, wins" (where the order is breadth first)
 
-This issue has been open at least since Jun of 2013 and does not look to be resolved any time soon. Note that python itself does not support multiple versions TODO
+This issue has been open at least since Jun of 2013 and does not look to be resolved any time soon. Note that python itself does not support multiple versions of the same module - since they are not being namespaced, they would collide under the global scope. Here, everything related to dependency resolution is left up to the programmer.
 
 #### NuGet ?
 
@@ -159,13 +157,19 @@ As the title of this paper suggests, we will be most interested in package manag
 
 ##### NPM
 
-While we are going to compare  ... allowing the developers much more freedom with .. One may say that this additional degree of freedom is what lead a lot of people to perceive NPM as being prone to errors and inconsistencies. When in fact, if a different architecture of module dependencies, or a philosophy of one of the previously mentioned package managers (like bundler) was in place, many of the ready-to-use packages would not be even feasible to install on the given setup. Or, at minimum, the developers of these package would have to work much harder to keep their package compatible with the highest available version of their dependency, so that this version may be shared accross the whole project.
+While we are going to compare, and often criticize the approach of NPM in relation to our own proposed model, we really think that Node Package Manager was a step in the right direction. The focus on private dependences, separated from the outside world is perhaps what allowed the developer to have much more freedom with what tools and packages they will use in their projects. One may say that this additional degree of freedom is what lead a lot of people to perceive NPM as being prone to errors and inconsistencies. When in fact, if a different architecture of module dependencies, or a philosophy of one of the previously mentioned package managers (like bundler) was in place, many of the ready-to-use packages would not be even feasible to install on the given setup. Or, at minimum, the developers of these package would have to work much harder to keep their package compatible with the highest available version of their dependency, so that this version may be shared accross the whole project.
 
-TODO
+We could also speculate that it was this freedom that made npm or maybe perhaps node.js as popular as it is today. The growth rate of NPM's repository is also currently unmatched (TODOimg cit-modcount), though if we were to take a more cynical look at this fact, the amount of modules which are a wild ideas at best, and unusable thrash at worst, is also non-trivial.
 
-We could speculate that it was this freedom that made npm or maybe perhaps node.js as popular as it is today. The growth rate of NPM's repository is also currently unmatched (TODOimg cit-modcount), though if we were to take a more cynical look at this fact, the amount of modules which are a wild ideas at best, and unusable thrash at worst, is also non-trivial. TODO
+The process of hadling shared dependencies, in the NPM's form of peer dependencies, is described in detail throughout the following chapters of this paper. NPM on it's own has no form of conflict resolution, it's philosophy being more in their prevention via their nested model. We are trying to improve on both of those points.
 
 ##### IED
+
+The smaller, experimental cousin of NPM within the node.js world (this time, the acronym itself has no particular meaning, if we were to take a wild guess, then it was probably one of the fewer three letter names still available to be used in node's package registry). While the original purpose of this project was simply to implement the NPMv2's installation algorithm in as few lines as possible, it has later come to improve on some of the aspects of NPM.
+
+Probably the main feature of IED, and the way it stands out the most in comparison to NPM, is it's way of adressing the installed package by their content - in that, two packages are considered to be the same if and only if they don't differ in what they consist of (with the exception of sha1 - which is used to decide this - having a collision). Following this, it installs the packages flatly while using symbolic links to recreate the required dependency hierarchy. In addition it offers some quality of life (as opposed to the previous ones being more conceptual) changes, like correct caching or atomic and concurrent installations (with NPM still having trouble with at least the first two of these points).
+
+Still, it does not offer any kind of dependency resolution, and in fact fails on some of the packages which are installable using NPM - though this may be attributed to it being a younger and much smaller project. It also does not support packages referenced via a git url.
 
 ## Discussion on current models (? or do this within the previous segment ?)
 
