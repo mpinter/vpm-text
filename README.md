@@ -374,9 +374,93 @@ This is an important aspect of our design, since it allows us to use it in the p
 
 ## Implementation
 
+We will now cover the implementation of our custom package manager, which works with the concept of public dependencies as we have defined it earlier. We shall provide the list of features that are presented in it's current state, the techniques and algorithms we have used, as well as the libraries (or packages) which helped us with achieving our goal. We will also get to all the details that were earlier said to be posponed until the implementation stage. Finally, a section on simulated annealing is present, which covers our proposed way of resolving conflicting dependencies.
 
+### Vacuum Package Manager
+
+VPM is a package manager for node.js, designed to provide an alternative for the de-facto standard package manager at the moment - NPM. It features the following:
+
+Works with packages using either peer or public dependencies (or both)
+
+As we have proven earlier, public dependency model is backwards compatible with the one using peer dependencies (except for the case where we wan't the incompatibility to happen, more in the public dependencies section of this paper). Therefore, our manager immediatly works with all the packages which are set out to work with NPM.
+
+Better security against conflicting shared dependencies using public dependency model
+
+This is related to the situations not handled by peer dependencies, again talked about in the previous chapters
+
+Parallel and atomic installations
+
+Downloading of the packages, their un-taring, and installation happens in parallel. The linking into the final hierarchy expected by node happens only once a package is successfuly placed within it's residing directory, so that you do not end up with partialy installed packages if something goes wrong (as it sometimes happens with NPM).
+
+Installs into flat structure
+
+Every installed package can be found diretly in the node_modules subdirectory vpm. No package in the exact same version is installed twice, unless it is needed because of it's different public dependency subset. The package dependencies are handled via symbolic links, with the packager required directly by the root being linked into the node_modules, just like with NPM which installs them there. From the point of view of node.js module parser, everything looks as expected. We may even save it a couple of resolution steps.
+
+Automatic conflict resolution
+
+In cases where both NPM and ied would fail with installation, VPM will try to find a plausible solution and install with it, if it succeed in doing so
+
+Smaller installations
+
+Since we try to reuse already installed packages as much as possible, and avoid installing the same packages twice, we save a couple of megabytes compared to NPM
+
+### Libraries used
+
+As was mentioned repeatedly throughout this paper, package managers encourage the sharing and reuse of code. We have thus leveled the opportunity presented by NPM, and in this section, present some of the key libraries that helped us shape the project.
+
+babel
+
+A transpiler for es6 javascript code. Essentialy, much of the functionality from the 2015 standard is not yet implemented in node.js - therefore, tools such as babel exist that traslate the code from the newer standard to a one in the older, currently available standard, while maintaining the same functionality.
+
+js-csp
+
+An alternative to callbacks and promises in handling asynchronicity (althought, since it is still a javascript package, internally the asynchronicity is still done through callbacks). CSP stands for 'communicating sequential processes', and is a way of handling the problem in Go or Clojure (of whose async librarie js-csp claims to be a 'very close port'(TODOcit-git)). Which, in turn, might have been inspired by something like parallel programming in OCCAM.
+
+lodash
+
+One of the go-to algorithm libraries for javascript. Provides you with implementations of day-to-day programming tasks functionality.
+
+mocha
+
+A simple, rather minimalist pluggable testing framework. We've also used it for generating and iterating the experiments shown in the results chapter.
+
+semver
+
+An NPM package for parsing of semver strings, along with some additional utility functions (like checking whether a given version satisfies a semver string). We have also used a couple of additional packages for working with semver ranges, in the spirit of avoiding of reinventing-the-wheel, when the functionality we needed already existed in the repository.
+
+transducers.js
+
+A powerfull tool for creating a reusable transformations that work on both the javascript collections and csp channels. Ultimately, we have ended up using only a very small subset of it's functionality, in the form of map and filter functions in manipulations of our data structures.
 
 ### Node.js module system
+
+TODO
+
+### Asynchronous operations
+TODOalsoreadinnode
+Let us introduce this section by stating, that node.js TODOasync We are using a library which provides us with the ability to handle the asynchronicity in the style of CSP, which is explained in the following paragraphs.
+
+The reason for us prefering this approach is the additional degree clarity it introduces to the code. Or, if we were to look on it from the other side, the mess that is often introduced through callbacks embeded in each other. Though the callback cascades are avoidable through the use of promises, which would be certainly a more 'mainstream' choice, we still like the syntax, and the semantic idea behind csp channels more.
+
+#### CSP
+
+The central idea of csp is the one of a channel - it is through it that two asynchronous tasks may communicate and wait for each other when needed. By default, these channels are unbuffered, meaning you have to wait for the otherside to put or take the information to continue. For this, one can use the es6 generator functions, which enables us to yield on a put or take channel operation - meaning that we offer the execution to a different thread until this operation returns. We can also put or take synchronously, providing a callback after the operation executes, if we are to do this action outside of the context of a generator, where the yield keyword is not available to us. Buffered channels, which provide us with a fixed length queue, also exist and are used.
+
+The advantage of csp library from a code legibility, or maybe even a more semantic view, is that you can easily see and reason about the points in code where the context switch happens. That is, you can be sure that your code always runs uninterrupted from yield to yield. This is easier to track than with the original approach, where you skip a bunch of callback and then either end up with a ten tabs deep cascade, or with yourself tracking the code execution spaghetti across multiple functions and possibly files.
+
+#### CSP channel as a data structure
+
+TODOhere
+
+TODO.. We must confess that this method is advised against in the documentation, since it breaks the intent of these structures, but this time taking on a more utilitarian mindset ourselves - it has worked out so far for us, even exactly with the expected results. TODOnot used as data structure, only 'hold' data until the firt request for them arrives - in a way very similar to the concept of streams. In fact, csp channels can be maybe viewed as streams between asynchronronous processes (or threads) more so than asynchronous queues - as they are a way of holding the data until it is requested by the other side. The difference here being that in case of unbuffered channels, the side offering the data also has to wait.
+
+### Concepts and data hierarchy
+
+#### Pkg registry
+
+#### Node registry
+
+### Installation algorithm
 
 ### Simulated annealing
 
@@ -418,11 +502,19 @@ TODO code
 
 The results of our algorithm, as well as the different parameters used, are shown in the next chapter. We leave the question of using the technique of simulated annealing to find not only a non-conflicting state, but also the one usign the smallest number of dependencies (or the least amount of megabytes installed) to further research.
 
+### Unit tests
+
 ## Results
 
 TODO - 3 packages - some opensource, wordy, vpm
 
 ## Future work
+
+heuristics
+
+git links
+
+shrinkwrap & updating
 
 ## References
 
