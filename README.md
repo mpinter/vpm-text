@@ -434,11 +434,15 @@ A powerfull tool for creating a reusable transformations that work on both the j
 
 ### Node.js module system
 
-TODO
+Node.js's documentation provides a well defined algorithm that node uses to resolve the modules of an application - or dependencies of a package. It's module system is actually responsible for not only finding the files of the dependencies, but also for their loading, caching and compiling (cit-modules2) - which we can leave up to it, as it does not really interfere with what we, as a package manager, are doing. As we are currently concerned primarily about the packages installed localy and required by their name, we shall skip the part of this algorithm related to the resolution on system wide packages, or files referenced directly by their path.
+
+In case of local packages, node.js first looks into the node_modules directory of the parent of the file from which the require was called. If it does not find the dependency there, it ascends into the parent directory and looks into the node_modules there. This process is repeated until the system's root folder is reached. Since packages are unlikely to be found outside of a node_modules folder, the rest of the directories met during this search are ignored. Node will also not append node_modules to a path already ending in node_modules(cit-modules).
+
+NPM takes advantage of this behaviour, and installs in the highest possible subdirectory - which is then checked as the module system searches for dependencies from the lowest to the highest one (of course, the 'height' talked about here is referencing the inverse of how deep have we descended within the subdirectory structure). Or, to be more precise, does so in it's dedupe step, which is run automatically after installation since version 3. On the other hand, because we are using symbolic links, we can take the extra step of linking every dependency directly at the point it is required. While this may save the resolver a couple of operations, it is overally a minor change, and a one that is not noticable unless we were to craft an extreme, non-realistic example of a dependency tree which would attempt misuse this behaviour. Thus, we will not stress this difference further.
 
 ### Asynchronous operations
 TODOalsoreadinnode
-Let us introduce this section by stating, that node.js TODOasync We are using a library which provides us with the ability to handle the asynchronicity in the style of CSP, which is explained in the following paragraphs.
+The V8 compiler, used for running of javascript code within the node environment, produces a synchronous, unparallelizable code. On the other hand, node.js strongly pushes the idea of asynchronicity. This is for all the operations done by node outside of the javascript code, these operations being mostly handling of input/output. Since I/O is genuinely slower then the rest of the code execution because of hardware or service (such as internet) limitations, it is generally a good idea to abide by these standards and handle node's native operations through asynchronous calls. For this, we are using a library that provides us with the ability to handle the asynchronicity in the style of CSP, which is explained in the following paragraphs.
 
 The reason for us prefering this approach is the additional degree clarity it introduces to the code. Or, if we were to look on it from the other side, the mess that is often introduced through callbacks embeded in each other. Though the callback cascades are avoidable through the use of promises, which would be certainly a more 'mainstream' choice, we still like the syntax, and the semantic idea behind csp channels more. Promises also bring in their own set of problems, such as, to paraphrase, events (which are the way of promise to signal their resolution status) being a bad primitive for data flow (cit-cspblog).
 
@@ -452,31 +456,53 @@ The drawback here is in the fact, that unless you are going to cut-off this beha
 
 #### CSP channel as a data structure
 
-TODOhere
+Apart from using the CSP channels to transfer the data between two asynchronous functions, there is also a point in our algorithm where they instead serve us as a structure for data storage. This might be considered a bit of an out of line idea, therefore we should explain our motivations further.
 
 Though the original intent of thee structures was merely to model the data flow, not to store any information, this time we will be taking on a more utilitarian mindset ourselves - it has worked out so far for us, even in a quite elegant way, so we are sticking to it. While touching on the topic of channels nt being used as data structures, but only to 'hold' data until the firt request for them arrives - we can say they can maybe be viewed as streams between asynchronronous processes (or threads) more so than asynchronous queues. The difference here being that in case of unbuffered channels, the side offering the data also has to wait.
 
-The benefit of our method is the one of unified approach to the stored data. In our algorithm, we needed access to the date that was asynchronely downloaded from the internet. These data were possibly accessed by multiple threads at the same time - and at the time of accessing them , they actually could not move forward until the data was available. Thus, instead of an endless loop of retrys until the data arrives (not that we ever considered such solution), we instead let each of the threads yield on the channel where the data will eventually become available.
+The benefit of our method is the one of unified approach to the stored data. In our algorithm, we needed access to the date that was asynchronely downloaded from the internet. This data can be accessed by multiple threads at the same time - and at the time of accessing them, these threads can actually not move forward until the data is available. Thus, instead of an endless loop of retries until the data arrives (not that we have ever considered such solution), we instead let each of the threads yield on the channel where the data will eventually become available.
 
-Simply taking from the channel would of course make the information unavaiabe to any other threads that might require it. Therefore, we will always 'peek' the channel. Since node guarantees us that code execution won't be interruped until we tell it to do so, we simulate the peek simply by using csp.take to get the value, and then putting it back on the channel using csp.put. The code for this is as follows TODO code
+Simply taking from the channel would of course make the information unavailabe to any other threads that might require it. Therefore, we will always 'peek' the channel. Since node guarantees us that code execution won't be interruped until we tell it to do so, we simulate the peek simply by using csp.take to get the value, and then putting it back on the channel using csp.put. More on this in the implementation details section.
 
 We have therefore created somewhat of a 'asynchronous store', using a buffered csp channel of length 1 with our custom peek function, convenient when one or more 'consumers' have to wait for data. We use this method to download and store package.json files for each dependency, as will be shown in the further sections.
-
-### Concepts and data hierarchy
-
-In this section, we will finally introduce the code of our project TODOhere
-
-#### Pkg registry
-
-Pkg_regitry is the file where everything related
-
-#### Node registry
 
 ### Installation algorithm
 
 When you provide the main install function with a package.json you want to install, the following steps will be executed, in the given order:
 
-### Simulated annealing
+1) A root package is created, for which the nodes for all of it's dependencies (whether they are private, public, peer or devDependencies) are gathered.
+
+2) When a new node is created, the information specified by the package dependent on it (that had caused the creation) is used to request the details about it. Thi information might be either an url to an archive of a concrete version of a package - in which case the details stored will be it's package json, or a semver range, in which case the package will be looked up in the node registry, and the json supplied from there is what we end up with - which contains the package.json files for each of the available versions. Either way, these json files are stored in a peekable csp channel, in a map in pkg_registry
+
+3) The node stores the said peekable channel and yields on it - continuing only once the json is downloaded.
+
+4) Once this info is retrieved, the node chooses a suitable version based on it and on a semver range specified by it's parent.
+
+5) Since the previous two steps are asynchronous, once a suitable candidate for a new node is found, it is first checked with a node registry, whether a node with a different (or even the same) version was resolved and used in the meanwhile - since we want to reuse nodes as much as possible, if such node exists, we will use that one and throw away the other that we have just resolved.
+
+6) Now that we have solidified a single version for the newly created node, we will again go through it's dependencies, create a new node for each of them, link it with an appropriate dependency format (based on it being public or private) and repeat the steps 2 to 5 on them
+
+7) The resolution function returns (or if we are talking in the asynchronous context, yields) the node it was given to resolve only once it's whole subtree of is constructed. Therefore, once the root node is returned in described way, we know the whole depedency tree is prepared
+
+8) The conflict resolution - simulated annealing - function is called. If no conflicts exist in the system as it is, this function is returned even before the first iteration and the algorithm continues with the installation step. Otherwise, the annealing process is run either for a set amount of iterations or - if this happens earlier - until we reach a point with 0 conflicts
+
+9) The packages are downloaded and unarchived into a temporal directory, and afterwards moved into the vpm subdirectory of the node modules. These steps are done asynchronously and in parallel.
+
+10) Once all of the packages are ready, the hierarchy required by the package dependencies, and represented in our node graph is constructed in node_modules using symbolic links
+
+devDependencies are currently handled in a way where they are installed only for the top level package, and ignored elsewhere.
+
+### Implementation details
+
+In this section, we will further explain the concepts, data structures and algorithms that were mentioned in the installation steps. TODO
+
+#### Pkg registry
+
+#### Node registry
+
+### Conflict resolution
+
+#### Simulated annealing
 
 Simulated annealing, in general, is a Monte Carlo method of for approximating a global optimum of a given function. It is an adaptation of a slightly older Metropolis-Hastings algorithm, essentially using technique from the area of study of thermodynamics to further improve the chances of it converging to the correct result. It has first apperd in a paper from 1983(cit-anneal).
 
@@ -515,8 +541,6 @@ Mutations (defining neighbours for each state) - changing a single package versi
 TODO code
 
 The results of our algorithm, as well as the different parameters used, are shown in the next chapter. We leave the question of using the technique of simulated annealing to find not only a non-conflicting state, but also the one usign the smallest number of dependencies (or the least amount of megabytes installed) to further research.
-
-### Unit tests
 
 ## Results
 
@@ -567,3 +591,7 @@ complx) Alsuwaiyel, M. H.: Algorithms: Design Techniques and Analysis
 hardness) https://people.debian.org/~dburrows/model.pdf
 
 csp-blog) http://phuu.net/2014/08/31/csp-and-transducers.html
+
+modules) https://nodejs.org/api/modules.html
+
+modules2) http://fredkschott.com/post/2014/06/require-and-the-module-system/
