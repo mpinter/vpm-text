@@ -440,7 +440,7 @@ TODO
 TODOalsoreadinnode
 Let us introduce this section by stating, that node.js TODOasync We are using a library which provides us with the ability to handle the asynchronicity in the style of CSP, which is explained in the following paragraphs.
 
-The reason for us prefering this approach is the additional degree clarity it introduces to the code. Or, if we were to look on it from the other side, the mess that is often introduced through callbacks embeded in each other. Though the callback cascades are avoidable through the use of promises, which would be certainly a more 'mainstream' choice, we still like the syntax, and the semantic idea behind csp channels more.
+The reason for us prefering this approach is the additional degree clarity it introduces to the code. Or, if we were to look on it from the other side, the mess that is often introduced through callbacks embeded in each other. Though the callback cascades are avoidable through the use of promises, which would be certainly a more 'mainstream' choice, we still like the syntax, and the semantic idea behind csp channels more. Promises also bring in their own set of problems, such as, to paraphrase, events (which are the way of promise to signal their resolution status) being a bad primitive for data flow (cit-cspblog).
 
 #### CSP
 
@@ -448,19 +448,33 @@ The central idea of csp is the one of a channel - it is through it that two asyn
 
 The advantage of csp library from a code legibility, or maybe even a more semantic view, is that you can easily see and reason about the points in code where the context switch happens. That is, you can be sure that your code always runs uninterrupted from yield to yield. This is easier to track than with the original approach, where you skip a bunch of callback and then either end up with a ten tabs deep cascade, or with yourself tracking the code execution spaghetti across multiple functions and possibly files.
 
+The drawback here is in the fact, that unless you are going to cut-off this behaviour with a synchronous, callback based csp.take - and you will need to do so at least at the highest level (perhaps the 'main' function of the program), you will pollute the rest of your code with generators, or more precisely the csp.go or csp.spawn functions. Both of the aforementioned functions spawn a go-routine, which is a generator function which returns a csp-channel. Now, if you use such go-routine somewhere in your code, you probably want to yield from the channel it returns at some point (a yield without other operation is an implicit take) - that means you have to do so in another generator function, which would probably also be a go-routine, and so on, until you decide that instead of yielding you will do a synchronous, callback-based take. Still, this may be preferable to the program execution flowing through callback functions, or emiting events.
+
 #### CSP channel as a data structure
 
 TODOhere
 
-TODO.. We must confess that this method is advised against in the documentation, since it breaks the intent of these structures, but this time taking on a more utilitarian mindset ourselves - it has worked out so far for us, even exactly with the expected results. TODOnot used as data structure, only 'hold' data until the firt request for them arrives - in a way very similar to the concept of streams. In fact, csp channels can be maybe viewed as streams between asynchronronous processes (or threads) more so than asynchronous queues - as they are a way of holding the data until it is requested by the other side. The difference here being that in case of unbuffered channels, the side offering the data also has to wait.
+Though the original intent of thee structures was merely to model the data flow, not to store any information, this time we will be taking on a more utilitarian mindset ourselves - it has worked out so far for us, even in a quite elegant way, so we are sticking to it. While touching on the topic of channels nt being used as data structures, but only to 'hold' data until the firt request for them arrives - we can say they can maybe be viewed as streams between asynchronronous processes (or threads) more so than asynchronous queues. The difference here being that in case of unbuffered channels, the side offering the data also has to wait.
+
+The benefit of our method is the one of unified approach to the stored data. In our algorithm, we needed access to the date that was asynchronely downloaded from the internet. These data were possibly accessed by multiple threads at the same time - and at the time of accessing them , they actually could not move forward until the data was available. Thus, instead of an endless loop of retrys until the data arrives (not that we ever considered such solution), we instead let each of the threads yield on the channel where the data will eventually become available.
+
+Simply taking from the channel would of course make the information unavaiabe to any other threads that might require it. Therefore, we will always 'peek' the channel. Since node guarantees us that code execution won't be interruped until we tell it to do so, we simulate the peek simply by using csp.take to get the value, and then putting it back on the channel using csp.put. The code for this is as follows TODO code
+
+We have therefore created somewhat of a 'asynchronous store', using a buffered csp channel of length 1 with our custom peek function, convenient when one or more 'consumers' have to wait for data. We use this method to download and store package.json files for each dependency, as will be shown in the further sections.
 
 ### Concepts and data hierarchy
 
+In this section, we will finally introduce the code of our project TODOhere
+
 #### Pkg registry
+
+Pkg_regitry is the file where everything related
 
 #### Node registry
 
 ### Installation algorithm
+
+When you provide the main install function with a package.json you want to install, the following steps will be executed, in the given order:
 
 ### Simulated annealing
 
@@ -551,3 +565,5 @@ pip) https://github.com/pypa/pip/issues/988
 complx) Alsuwaiyel, M. H.: Algorithms: Design Techniques and Analysis
 
 hardness) https://people.debian.org/~dburrows/model.pdf
+
+csp-blog) http://phuu.net/2014/08/31/csp-and-transducers.html
